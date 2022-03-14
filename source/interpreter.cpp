@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <map>
 
 using namespace std;
 
@@ -52,8 +53,8 @@ public:
 	int getPriority(){
 		return PRIORITY[getType()];
 	}
-	int getValue(const Number & left, 
-		     const Number & right);
+	int getValue(const Number &left, 
+		     const Number &right);
 };
 
 class Variable: public Lexem {
@@ -114,42 +115,72 @@ vector<Lexem *>  parseLexem(string codeline){
                 if(ptrO){
                         infix.push_back(ptrO);
                 }
+
 	}
 	return infix;
 }
-/*
+
 vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 	vector<Lexem *> postfix;
-	stack <int> stack;
-	for(int i = 0; i < infix.size(); i++){
-		//if(infix[i] number){
-		//	add in postfix;
-		//}
-		//if(infix[i] oper){
-		//	int x = stack.top?
-		//	if(x == oper){
-		//		add in postfix;
-		//	}
-		//	if(x > oper (oper is bracket)){
-		//		if LBRACKET stack.push(?);
-		//		if RBRACKET{
-		//			while(x != LBRACKET){
-		//				x add in postfix;
-		//				x = stack.top();
-		//			}
-		//		}
-		//	}
-		//	if(x > oper){
-		//		while(x > oper){
-		//			x add in postfix;
-		//			x = stack.top();
-		//			}
-		//		}
-		//}
+	stack<Oper *> stack;
+	int flag = 0;
+/*	for(int i = 0; i < infix.size(); i++){
+		if(infix[i] == number){
+			postfix.push_back(number.getValue);
+			continue;
+		}
+		if(infix[i] == variable){
+			postfix.push_back(variable)
+			continue;
+		}
+		if(infix[i] == oper){
+			if(flag == 0){
+				stack.push(oper);
+				flag = 1;
+				continue;
+			}
+			Oper x = stack.front() 
+			if(x.getPriority() < oper.getPriority()){
+				stack.push(oper);
+				continue;
+			}
+			if(x.getPriority() == oper.getPriority()){
+				postfix.push(x);
+				stack.pop();
+				stack.push_back(oper);
+				continue;
+			}
+			if(x.getPriority() > oper.getPriority()){ //oper is bracket
+				if(oper == LBRACKET){
+					stack.push(oper);
+					continue;
+				}
+				if(oper == RBRACKET){
+					while(x != LBRACKET){
+						postfix.push_back(x);	
+						stack.pop();
+						x = stack.front();
+					}
+					continue;
+				}
+				else{
+					postfix.push_back(x);
+					stack.pop();
+					stack.push_back(oper);
+					continue;
+				}
+			}
+		}
 	}
+	for(int i = 0; i < stack.size(); i++){
+		Oper x = stack.front();
+		postfix.push_back(x);
+		stack.pop();
+	}
+*/	
 	return postfix;
 }
-
+/*
 int evaluatePoliz(vector<Lexem *> poliz){
 	int value = 0;
 	for(int i = 0; i < poliz.size(); i++){
