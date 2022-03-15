@@ -151,52 +151,51 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 		}
 		if(infix[i]->getLexem() == OPER){
 			cout << "infix[" << i << "] is oper" << endl;
-		}
-/*			if(flag == 0){
-				stack.push(oper);
+			if(flag == 0){
+				cout << "type of oper is " << ((Oper *)infix[i])->getType() << endl;
+				stack.push((Oper *)infix[i]);
 				flag = 1;
 				continue;
 			}
-			Oper x = stack.front() 
-			if(x.getPriority() < oper.getPriority()){
-				stack.push(oper);
+			Oper *x = stack.top(); 
+			if(x->getPriority() < ((Oper *)infix[i])->getPriority()){
+				stack.push((Oper *)infix[i]);
 				continue;
 			}
-			if(x.getPriority() == oper.getPriority()){
-				postfix.push(x);
+			if(x->getPriority() == ((Oper *)infix[i])->getPriority()){
+				postfix.push_back(x);
 				stack.pop();
-				stack.push_back(oper);
+				stack.push((Oper *)infix[i]);
 				continue;
 			}
-			if(x.getPriority() > oper.getPriority()){ //oper is bracket
-				if(oper == LBRACKET){
-					stack.push(oper);
+			if(x->getPriority() > ((Oper *)infix[i])->getPriority()){ 
+				if(((Oper *)infix[i])->getType() == LBRACKET){
+					stack.push((Oper *)infix[i]);
 					continue;
 				}
-				if(oper == RBRACKET){
-					while(x != LBRACKET){
+				if(((Oper *)infix[i])->getType() == RBRACKET){
+					while(x->getType() != LBRACKET){
 						postfix.push_back(x);	
 						stack.pop();
-						x = stack.front();
+						x = stack.top();
 					}
 					continue;
 				}
 				else{
 					postfix.push_back(x);
 					stack.pop();
-					stack.push_back(oper);
+					stack.push((Oper *)infix[i]);
 					continue;
 				}
 			}
 		}
 	}
-	for(int i = 0; i < stack.size(); i++){
-		Oper x = stack.front();
+	for(int i = 0; i < stack.size() - 1; i++){ //stack size -1 bc ( in stack
+		Oper *x = stack.top();
 		postfix.push_back(x);
 		stack.pop();
 	}
-*/
-	}
+	stack.pop(); //pop (
 	cout << "size of postfix " << postfix.size() << endl;
 	for(int i = 0; i < postfix.size(); i++){
 		cout << postfix[i]->getLexem() << endl;
