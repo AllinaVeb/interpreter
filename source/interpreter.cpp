@@ -33,13 +33,12 @@ int PRIORITY [] = {
 };
 
 class Lexem {
-	LEXEM_TYPE lexem_type;
 public:
+	LEXEM_TYPE lexem_type;
 	Lexem(){};
 	LEXEM_TYPE getLexem(){
 		return lexem_type;
-	}
-			
+	}		
 };
 
 class Number: public Lexem {
@@ -47,6 +46,7 @@ class Number: public Lexem {
 public:
 	Number(int newValue){
 		value = newValue;
+		lexem_type = NUMBER;
 	}
 	int getValue(){
 		return value;
@@ -58,6 +58,7 @@ class Oper: public Lexem {
 public:
 	Oper(OPERATOR opertype){
 		Oper::opertype = opertype;
+		lexem_type = OPER;
 	} 
 	OPERATOR getType(){
 		return opertype;
@@ -74,6 +75,7 @@ class Variable: public Lexem {
 public:
 	Variable(const string &newName){
 		name = newName;
+		lexem_type = VARIABLE;
 	}
 	int getValue();
 	void setValue(int newValue){
@@ -137,21 +139,19 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 	stack<Oper *> stack;
 	int flag = 0;
 	for(int i = 0; i < infix.size(); i++){
-//		if(infix[i]->getLexem() == OPER){
-//			cout << "infix[" << i << "] is num" << endl;
-		//	postfix.push_back(number.getValue);
-		//	continue;
-//		}
-//		if(infix[i] == variable){
-
-		//	postfix.push_back(variable)
-		//	continue;
-//		}
-//		if(infix[i] == oper){
-
-
-//		}
-//	}
+		if(infix[i]->getLexem() == NUMBER){
+			cout << "infix[" << i << "] is num" << endl;
+			postfix.push_back(infix[i]);
+			continue;
+		}
+		if(infix[i]->getLexem() == VARIABLE){
+			cout << "infix[" << i << "] is var" << endl;
+			postfix.push_back(infix[i]);
+			continue;
+		}
+		if(infix[i]->getLexem() == OPER){
+			cout << "infix[" << i << "] is oper" << endl;
+		}
 /*			if(flag == 0){
 				stack.push(oper);
 				flag = 1;
@@ -196,7 +196,11 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 		stack.pop();
 	}
 */
-	}	
+	}
+	cout << "size of postfix " << postfix.size() << endl;
+	for(int i = 0; i < postfix.size(); i++){
+		cout << postfix[i]->getLexem() << endl;
+	}
 	return postfix;
 }
 /*
