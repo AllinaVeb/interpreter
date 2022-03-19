@@ -8,7 +8,7 @@ using namespace std;
 
 enum OPERATOR{
 	LBRACKET, RBRACKET,
-	ASSING,
+//	ASSING,
 	PLUS, MINUS,
 	MULTIPLY
 };
@@ -20,14 +20,14 @@ enum LEXEM_TYPE{
 
 char OPERATOR_STRING[] = {
 	'(', ')',
-	'=',
+//	'=',
 	'+', '-',
 	'*'
 };
 
 int PRIORITY [] = {
 	-1, -1,
-	0,
+//	0,
 	1, 1,
 	2
 };
@@ -76,6 +76,9 @@ public:
 	Variable(const string &newName){
 		name = newName;
 		lexem_type = VARIABLE;
+	}
+	string getName(){
+		return name;
 	}
 	int getValue();
 	void setValue(int newValue){
@@ -137,24 +140,20 @@ vector<Lexem *>  parseLexem(string codeline){
 vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 	vector<Lexem *> postfix;
 	stack<Oper *> stack;
-	int flag = 0;
+	int flagFirstOper = 0;
 	for(int i = 0; i < infix.size(); i++){
 		if(infix[i]->getLexem() == NUMBER){
-			cout << "infix[" << i << "] is num" << endl;
 			postfix.push_back(infix[i]);
 			continue;
 		}
 		if(infix[i]->getLexem() == VARIABLE){
-			cout << "infix[" << i << "] is var" << endl;
 			postfix.push_back(infix[i]);
 			continue;
 		}
 		if(infix[i]->getLexem() == OPER){
-			cout << "infix[" << i << "] is oper" << endl;
-			if(flag == 0){
-				cout << "type of oper is " << ((Oper *)infix[i])->getType() << endl;
+			if(flagFirstOper == 0){
 				stack.push((Oper *)infix[i]);
-				flag = 1;
+				flagFirstOper = 1;
 				continue;
 			}
 			Oper *x = stack.top(); 
@@ -179,6 +178,7 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 						stack.pop();
 						x = stack.top();
 					}
+					stack.pop(); //pop (
 					continue;
 				}
 				else{
@@ -190,16 +190,21 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 			}
 		}
 	}
-	for(int i = 0; i < stack.size() - 1; i++){ //stack size -1 bc ( in stack
+	cout << "size of stack " << stack.size() << endl;
+	int sizestack = stack.size();
+	for(int i = 0; i < sizestack; i++){
 		Oper *x = stack.top();
-		postfix.push_back(x);
+		cout << "stack[" << i << "] is oper "
+                             << OPERATOR_STRING[(int)(x->getType())] << endl;
+		if(!(x->getType() == LBRACKET)){
+			postfix.push_back(x);
+		}
 		stack.pop();
 	}
-	stack.pop(); //pop (
 	cout << "size of postfix " << postfix.size() << endl;
-	for(int i = 0; i < postfix.size(); i++){
-		cout << postfix[i]->getLexem() << endl;
-	}
+//	for(int i = 0; i < postfix.size(); i++){
+//		cout << postfix[i]->getLexem() << endl;
+//	}
 	return postfix;
 }
 /*
@@ -211,18 +216,42 @@ int evaluatePoliz(vector<Lexem *> poliz){
 	return value;
 }
 */
+
+void printVec(vector<Lexem *> postfix){
+	cout << "in printVec postfix size is " << postfix.size() << endl;
+	for(int i = 0; i < postfix.size(); i++){
+		int k = (int)postfix[i]->getLexem();
+		if(k == 0){
+			cout << "postfix[" << i << "] is num " 
+			     << ((Number *)postfix[i])->getValue() << endl;
+			continue;
+		}
+		if(k == 1){
+			cout << "postfix[" << i << "] is oper " 
+			     << OPERATOR_STRING[(int)(((Oper *)postfix[i])->getType())] << endl;
+			continue;
+		}
+		if(k == 2){
+			cout << "postfix[" << i << "] is var " 
+			     << (string)(((Variable *)postfix[i])->getName()) << endl;
+			continue;
+		}
+	}
+}
+
 int main(){
 	string codeline;
 	vector<Lexem *> infix;
 	vector<Lexem *> postfix;
 	int value;
 	while(getline(cin, codeline)){
-		cout << "size of codeline " << codeline.size() << endl;
 		infix = parseLexem(codeline);
 		cout << "size of infix " << infix.size() << endl;
 		postfix = buildPoliz(infix);
+		printVec(postfix);
 	//	value = evaluatePoliz(postfix);
 	//	cout << value << endl ;
+	
 	}
 	return 0;
 }
