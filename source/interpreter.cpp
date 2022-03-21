@@ -8,9 +8,18 @@ using namespace std;
 
 enum OPERATOR{
 	LBRACKET, RBRACKET,
-//	ASSING,
+	ASSING,
+	OR,
+	AND,
+	BITOR,
+	XOR,
+	BITAND,
+	EQ, NEQ,
+	LEQ, LT,
+	GEQ, GT,
+	SHL, SHR,
 	PLUS, MINUS,
-	MULTIPLY
+	MULT, DIV, MOD
 };
 
 enum LEXEM_TYPE{
@@ -18,18 +27,36 @@ enum LEXEM_TYPE{
 	VARIABLE
 };
 
-char OPERATOR_STRING[] = {
-	'(', ')',
-//	'=',
-	'+', '-',
-	'*'
+string OPERTEXT[] = {
+	"(", ")",
+	":=",
+	"or",
+	"and",
+	"|",
+	"^",
+	"&",
+	"==", "!=",
+	"<=", "<",
+	">=", ">",
+	"<<", ">>",
+	"+", "-",
+	"*", "/", "%"
 };
 
 int PRIORITY [] = {
 	-1, -1,
-//	0,
-	1, 1,
-	2
+	0,
+	1,
+	2,
+	3,
+	4,
+	5,
+	6, 6,
+	7, 7,
+	7, 7,
+	8, 8, 
+	9, 9,
+	10, 10, 10
 };
 
 class Lexem {
@@ -83,7 +110,7 @@ Number * Oper::getValue(Number *leftnum, Number *rightnum){
 				left = left - right;
 				break;
 			}
-		case MULTIPLY:
+		case MULT:
 			{
 				left = left * right;
 				break;
@@ -109,9 +136,10 @@ public:
 };
 
 Oper *checkOper(string codeline, int *i){
-	for(int j = 0; j < sizeof(OPERATOR_STRING); j++){
-		if(codeline[*i] == OPERATOR_STRING[j]){
-			cout << "oper is " << OPERATOR_STRING[j] << endl;
+	for(int j = 0; j < sizeof(OPERTEXT); j++){
+		string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
+		if(OPERTEXT[j] == subcodeline){
+			cout << "oper is " << subcodeline << endl;
 			return new Oper((OPERATOR)j);
 		}
 	}
@@ -146,14 +174,18 @@ vector<Lexem *>  parseLexem(string codeline){
 		Number *ptrN = checkNumber(codeline, &i);
 		if(ptrN){
 			infix.push_back(ptrN);
+			i--;
+			continue;
 		}
 		Variable *ptrV = checkLetter(codeline, &i);
                 if(ptrV){
                         infix.push_back(ptrV);
+			continue;
                 }
 		Oper *ptrO = checkOper(codeline, &i);
                 if(ptrO){
                         infix.push_back(ptrO);
+			continue;
                 }
 	}
 	return infix;
@@ -217,7 +249,7 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 	for(int i = 0; i < sizestack; i++){
 		Oper *x = stack.top();
 		cout << "stack[" << i << "] is oper "
-                             << OPERATOR_STRING[(int)(x->getType())] << endl;
+                             << OPERTEXT[(int)(x->getType())] << endl;
 		if(!(x->getType() == LBRACKET)){
 			postfix.push_back(x);
 		}
@@ -229,14 +261,14 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 
 int evaluatePoliz(vector<Lexem *> poliz){
 	stack<Number *> ans;
+	ans.push(new Number(0)); //for -num 
 	for(int i = 0; i < poliz.size(); i++){
 		if(poliz[i]->getLexem() == NUMBER){
 			ans.push((Number *)poliz[i]);
 			continue;
 		}
 		if(poliz[i]->getLexem() == OPER){
-			int size = ans.size();
-			cout << "size of ans = " << size << endl;
+			cout << "size of ans = " << ans.size() << endl;
 			Number *x = ans.top();
 			cout << "left num is " << x->getValue() << endl;
 			ans.pop();
@@ -261,7 +293,7 @@ void printVec(vector<Lexem *> postfix){
 		}
 		if(k == 1){
 			cout << "postfix[" << i << "] is oper " 
-			     << OPERATOR_STRING[(int)(((Oper *)postfix[i])->getType())] << endl;
+			     << OPERTEXT[(int)(((Oper *)postfix[i])->getType())] << endl;
 			continue;
 		}
 		if(k == 2){
