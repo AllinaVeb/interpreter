@@ -66,9 +66,31 @@ public:
 	int getPriority(){
 		return PRIORITY[getType()];
 	}
-	int getValue(const Number &left, 
-		     const Number &right);
+	Number *getValue(Number *left, Number *right);
 };
+
+Number * Oper::getValue(Number *leftnum, Number *rightnum){
+	int left = leftnum->getValue();
+        int right = rightnum->getValue();
+	switch(getType()){
+		case PLUS:
+			{
+				left = left + right;
+				break;
+			}
+		case MINUS:
+			{
+				left = left - right;
+				break;
+			}
+		case MULTIPLY:
+			{
+				left = left * right;
+				break;
+			}
+	}
+	return new Number(left);
+}
 
 class Variable: public Lexem {
 	string name;
@@ -202,23 +224,34 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 		stack.pop();
 	}
 	cout << "size of postfix " << postfix.size() << endl;
-//	for(int i = 0; i < postfix.size(); i++){
-//		cout << postfix[i]->getLexem() << endl;
-//	}
 	return postfix;
 }
-/*
+
 int evaluatePoliz(vector<Lexem *> poliz){
-	int value = 0;
+	stack<Number *> ans;
 	for(int i = 0; i < poliz.size(); i++){
-		//?
+		if(poliz[i]->getLexem() == NUMBER){
+			ans.push((Number *)poliz[i]);
+			continue;
+		}
+		if(poliz[i]->getLexem() == OPER){
+			int size = ans.size();
+			cout << "size of ans = " << size << endl;
+			Number *x = ans.top();
+			cout << "left num is " << x->getValue() << endl;
+			ans.pop();
+			Number *y = ans.top();
+			cout << "right num is " << y->getValue() << endl;
+			ans.pop();
+			Number *ptrN =((Oper *)poliz[i])->getValue(y, x);
+                        ans.push(ptrN);
+			continue;
+		}
 	}
-	return value;
+	return (ans.top())->getValue();
 }
-*/
 
 void printVec(vector<Lexem *> postfix){
-	cout << "in printVec postfix size is " << postfix.size() << endl;
 	for(int i = 0; i < postfix.size(); i++){
 		int k = (int)postfix[i]->getLexem();
 		if(k == 0){
@@ -249,9 +282,8 @@ int main(){
 		cout << "size of infix " << infix.size() << endl;
 		postfix = buildPoliz(infix);
 		printVec(postfix);
-	//	value = evaluatePoliz(postfix);
-	//	cout << value << endl ;
-	
+		value = evaluatePoliz(postfix);
+		cout << "value = " << value << endl ;
 	}
 	return 0;
 }
