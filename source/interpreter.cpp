@@ -29,7 +29,7 @@ enum LEXEM_TYPE{
 
 string OPERTEXT[] = {
 	"(", ")",
-	":=",
+	"=",
 	"or",
 	"and",
 	"|",
@@ -96,27 +96,27 @@ public:
 	Number *getValue(Number *left, Number *right);
 };
 
-Number * Oper::getValue(Number *leftnum, Number *rightnum){
+Number * Oper::getValue(Number *rightnum, Number *leftnum){
 	int left = leftnum->getValue();
         int right = rightnum->getValue();
 	switch(getType()){
 		case PLUS:
 			{
-				left = left + right;
+				right = left + right;
 				break;
 			}
 		case MINUS:
 			{
-				left = left - right;
+				right = left - right;
 				break;
 			}
 		case MULT:
 			{
-				left = left * right;
+				right = left * right;
 				break;
 			}
 	}
-	return new Number(left);
+	return new Number(right);
 }
 
 class Variable: public Lexem {
@@ -136,10 +136,18 @@ public:
 };
 
 Oper *checkOper(string codeline, int *i){
-	for(int j = 0; j < sizeof(OPERTEXT); j++){
+	int size = sizeof(OPERTEXT)/sizeof(OPERTEXT[0]);
+	for(int j = 0; j < size; j++){
 		string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
 		if(OPERTEXT[j] == subcodeline){
 			cout << "oper is " << subcodeline << endl;
+			if(subcodeline.size() == 2){
+                                (*i)++;
+                        }
+                        if(subcodeline.size() == 3){
+                                (*i)++;
+                                (*i)++;
+                        }
 			return new Oper((OPERATOR)j);
 		}
 	}
@@ -177,15 +185,15 @@ vector<Lexem *>  parseLexem(string codeline){
 			i--;
 			continue;
 		}
-		Variable *ptrV = checkLetter(codeline, &i);
-                if(ptrV){
-                        infix.push_back(ptrV);
-			continue;
-                }
 		Oper *ptrO = checkOper(codeline, &i);
                 if(ptrO){
                         infix.push_back(ptrO);
 			continue;
+                }
+		Variable *ptrV = checkLetter(codeline, &i);
+                if(ptrV){
+                        infix.push_back(ptrV);
+                        continue;
                 }
 	}
 	return infix;
@@ -284,12 +292,15 @@ int evaluatePoliz(vector<Lexem *> poliz){
 		if(poliz[i]->getLexem() == OPER){
 			cout << "size of ans = " << ans.size() << endl;
 			Number *x = ans.top();
-			cout << "left num is " << x->getValue() << endl;
+			cout << "right num is " << x->getValue() << endl;
 			ans.pop();
 			Number *y = ans.top();
-			cout << "right num is " << y->getValue() << endl;
+			cout << "left num is " << y->getValue() << endl;
 			ans.pop();
-			Number *ptrN =((Oper *)poliz[i])->getValue(y, x);
+			Number *ptrN =((Oper *)poliz[i])->getValue(x, y);
+			if(ans.empty()){
+				ans.push(new Number(0));
+			}
                         ans.push(ptrN);
 			continue;
 		}
