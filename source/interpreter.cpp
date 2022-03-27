@@ -216,9 +216,20 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 				continue;
 			}
 			if(x->getPriority() == ((Oper *)infix[i])->getPriority()){
-				postfix.push_back(x);
-				stack.pop();
-				stack.push((Oper *)infix[i]);
+				if(((Oper *)infix[i])->getType() == LBRACKET){
+					stack.push((Oper *)infix[i]);
+                                        continue;
+				}
+				if(!(((Oper *)infix[i])->getType() == RBRACKET)){
+					postfix.push_back(x);
+					stack.pop();
+					stack.push((Oper *)infix[i]);
+				}else{
+					stack.pop();
+					if(stack.empty()){
+                                		flagFirstOper = 0;
+                                	}
+				}	
 				continue;
 			}
 			if(x->getPriority() > ((Oper *)infix[i])->getPriority()){ 
@@ -233,6 +244,9 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 						x = stack.top();
 					}
 					stack.pop(); //pop (
+					if(stack.empty()){
+						flagFirstOper = 0;
+					}
 					continue;
 				}
 				else{
@@ -315,6 +329,7 @@ int main(){
 		postfix = buildPoliz(infix);
 		printVec(postfix);
 		value = evaluatePoliz(postfix);
+		infix.clear();
 		cout << "value = " << value << endl ;
 	}
 	return 0;
