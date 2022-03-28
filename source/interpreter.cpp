@@ -6,6 +6,8 @@
 
 using namespace std;
 
+map<string, int> mapp;
+
 enum OPERATOR{
 	LBRACKET, RBRACKET,
 	ASSING,
@@ -80,6 +82,25 @@ public:
 	}
 };
 
+class Variable: public Lexem {
+        string name;
+public:
+        Variable(const string &newName){
+                name = newName;
+                lexem_type = VARIABLE;
+        }
+        string getName(){
+                return name;
+        }
+        int getValue(){
+		return mapp[name];
+	}
+        void setValue(int newValue){
+        //      value = newValue;
+        //      work in map??
+        }
+};
+
 class Oper: public Lexem {
 	OPERATOR opertype;
 public:
@@ -93,12 +114,31 @@ public:
 	int getPriority(){
 		return PRIORITY[getType()];
 	}
-	Number *getValue(Number *left, Number *right);
+	Lexem *getValue(Lexem *, Lexem *);
 };
 
-Number * Oper::getValue(Number *rightnum, Number *leftnum){
-	int left = leftnum->getValue();
-        int right = rightnum->getValue();
+Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
+	int left, right;
+	if(getType() == ASSING){
+                right = ((Number *)rightarg)->getValue();
+                string name = ((Variable *)leftarg)->getName();
+                cout << "name is " << name << endl;
+                mapp[name] = right;
+                cout << "map is " << mapp[name] << endl;
+                return new Number(right);
+        }
+        if(leftarg->getLexem() == NUMBER){
+                left = ((Number *)leftarg)->getValue();
+        }
+        else{
+                left = mapp[((Variable *)leftarg)->getName()];
+        }
+        if(rightarg->getLexem() == NUMBER){
+                right = ((Number *)rightarg)->getValue();
+        }
+        else{
+                right = mapp[((Variable *)rightarg)->getName()];
+        }
 	switch(getType()){
 		case PLUS:
 			{
@@ -115,42 +155,109 @@ Number * Oper::getValue(Number *rightnum, Number *leftnum){
 				right = left * right;
 				break;
 			}
+		case OR:
+			{
+				right = left or right;
+				break;
+			}
+		case AND:
+			{
+				right = left and right;
+				break;
+			}
+		case BITOR:
+			{
+				right = left bitor right;
+				break;
+			}
+		case XOR:
+			{
+				right = left xor right;
+				break;
+			}
+		case BITAND:
+			{
+				right = left bitand right;
+				break;
+			}
+		case EQ:
+			{
+				right = (left == right);
+				break;
+			}
+		case NEQ:
+			{
+				right = (left != right);
+				break;
+			}
+		case LEQ:
+			{
+				right = left <= right;
+				break;
+			}
+		case LT:
+			{
+				right = left < right;
+				break;
+			}
+		case GEQ:
+			{
+				right = left >= right;
+                                break;
+                        }
+                case GT:
+                        {
+                                right = left > right;
+                                break;
+                        }
+                case SHL:
+                        {
+                                right = left << right;
+                                break;
+                        }
+
+                case SHR:
+                        {
+                                right = left >> right;
+                                break;
+                        }
+                case DIV:
+                        {
+                                right = left / right;
+                                break;
+                        }
+
+                case MOD:
+                        {
+                                right = left % right;
+                                break;
+                        }
 	}
 	return new Number(right);
 }
 
-class Variable: public Lexem {
-	string name;
-public:
-	Variable(const string &newName){
-		name = newName;
-		lexem_type = VARIABLE;
-	}
-	string getName(){
-		return name;
-	}
-	int getValue();
-	void setValue(int newValue){
-	//	value = newValue;
-	}
-};
-
 Oper *checkOper(string codeline, int *i){
 	int size = sizeof(OPERTEXT)/sizeof(OPERTEXT[0]);
+	int position = -1;
+	string subline;
 	for(int j = 0; j < size; j++){
 		string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
 		if(OPERTEXT[j] == subcodeline){
-			cout << "oper is " << subcodeline << endl;
-			if(subcodeline.size() == 2){
-                                (*i)++;
-                        }
-                        if(subcodeline.size() == 3){
-                                (*i)++;
-                                (*i)++;
-                        }
-			return new Oper((OPERATOR)j);
+			position = j;
+			subline = subcodeline;
 		}
 	}
+	if(position >= 0){
+			cout << "oper is " << subline << endl;
+			if(subline.size() == 2){
+                                (*i)++;
+                        }
+                        if(subline.size() == 3){
+                                (*i)++;
+                                (*i)++;
+                        }
+			return new Oper((OPERATOR)position);
+		}
 	return nullptr;
 }
 
@@ -168,9 +275,14 @@ Number *checkNumber(string codeline, int *i){
 }
 
 Variable *checkLetter(string codeline, int *i){
+	string name;
 	if(codeline[*i] >= 'a' && codeline[*i] <= 'z'){
-		cout << "variable is " << codeline[*i] << endl;
-		string name = {codeline[*i]};
+		while((codeline[*i] >= 'a' && codeline[*i] <= 'z') || isdigit(codeline[*i])){
+			string newLetter = {codeline[*i]};
+                        name.append(newLetter);
+                        (*i)++;
+		}
+		cout << "variable is " << name << endl;
 		return new Variable(name);
 	}
 	return nullptr;
@@ -193,6 +305,7 @@ vector<Lexem *>  parseLexem(string codeline){
 		Variable *ptrV = checkLetter(codeline, &i);
                 if(ptrV){
                         infix.push_back(ptrV);
+			i--;
                         continue;
                 }
 	}
@@ -232,13 +345,14 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 					postfix.push_back(x);
 					stack.pop();
 					stack.push((Oper *)infix[i]);
+					continue;
 				}else{
 					stack.pop();
 					if(stack.empty()){
                                 		flagFirstOper = 0;
                                 	}
+					continue;
 				}	
-				continue;
 			}
 			if(x->getPriority() > ((Oper *)infix[i])->getPriority()){ 
 				if(((Oper *)infix[i])->getType() == LBRACKET){
@@ -257,10 +371,13 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 					}
 					continue;
 				}
-				else{
-					postfix.push_back(x);
-					stack.pop();
-					stack.push((Oper *)infix[i]);
+				else{	
+					while(!(stack.empty())){
+						x = stack.top();
+        	        	                postfix.push_back(x);
+	        	                        stack.pop();
+					}
+                                        stack.push((Oper *)infix[i]);		
 					continue;
 				}
 			}
@@ -282,30 +399,30 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 }
 
 int evaluatePoliz(vector<Lexem *> poliz){
-	stack<Number *> ans;
+	stack<Lexem *> ans;
 	ans.push(new Number(0)); //for -num 
 	for(int i = 0; i < poliz.size(); i++){
-		if(poliz[i]->getLexem() == NUMBER){
-			ans.push((Number *)poliz[i]);
+		if(poliz[i]->getLexem() != OPER){
+			ans.push(poliz[i]);
 			continue;
 		}
 		if(poliz[i]->getLexem() == OPER){
 			cout << "size of ans = " << ans.size() << endl;
-			Number *x = ans.top();
-			cout << "right num is " << x->getValue() << endl;
+			Lexem *x = ans.top();
 			ans.pop();
-			Number *y = ans.top();
-			cout << "left num is " << y->getValue() << endl;
+			Lexem *y = ans.top();
 			ans.pop();
-			Number *ptrN =((Oper *)poliz[i])->getValue(x, y);
+		//	cout << "left arg is " << y->getValue() << endl;
+		//	cout << "right arg is " << x->getValue() << endl;
+			Lexem *arg =((Oper *)poliz[i])->getValue(y, x);
 			if(ans.empty()){
 				ans.push(new Number(0));
 			}
-                        ans.push(ptrN);
+                        ans.push(arg);
 			continue;
 		}
 	}
-	return (ans.top())->getValue();
+	return ((Number *)ans.top())->getValue();
 }
 
 void printVec(vector<Lexem *> postfix){
