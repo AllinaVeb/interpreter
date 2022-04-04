@@ -6,20 +6,24 @@
 
 using namespace std;
 
-map<string, int> mapp;
+map<string, int> table;
+map<string, int> LabelTable;
 
 enum OPERATOR{
+	IF, THEN,
+	ELSE, ENDIF,
+	WHILE, ENDWHILE,
+	GOTO, ASSIGN, COLON,
 	LBRACKET, RBRACKET,
-	ASSING,
 	OR,
 	AND,
 	BITOR,
 	XOR,
 	BITAND,
 	EQ, NEQ,
+	SHL,SHR,
 	LEQ, LT,
 	GEQ, GT,
-	SHL, SHR,
 	PLUS, MINUS,
 	MULT, DIV, MOD
 };
@@ -30,33 +34,39 @@ enum LEXEM_TYPE{
 };
 
 string OPERTEXT[] = {
+	"if", "then",
+	"else", "endif",
+	"while", "endwhile",
+	"goto", "=", ":",
 	"(", ")",
-	"=",
 	"or",
 	"and",
 	"|",
 	"^",
 	"&",
 	"==", "!=",
+	"<<", ">>",
 	"<=", "<",
 	">=", ">",
-	"<<", ">>",
 	"+", "-",
 	"*", "/", "%"
 };
 
 int PRIORITY [] = {
-	-1, -1,
-	0,
+	-2, -2,
+	-2, -2,
+	-2, -2,
+	-1, -1, -1,
+	0, 0,
 	1,
 	2,
 	3,
 	4,
 	5,
 	6, 6,
+	8, 8,
 	7, 7,
-	7, 7,
-	8, 8, 
+	7, 7, 
 	9, 9,
 	10, 10, 10
 };
@@ -93,7 +103,7 @@ public:
                 return name;
         }
         int getValue(){
-		return mapp[name];
+		return table[name];
 	}
         void setValue(int newValue){
         //      value = newValue;
@@ -119,25 +129,25 @@ public:
 
 Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 	int left, right;
-	if(getType() == ASSING){
+	if(getType() == ASSIGN){
                 right = ((Number *)rightarg)->getValue();
                 string name = ((Variable *)leftarg)->getName();
                 cout << "name is " << name << endl;
-                mapp[name] = right;
-                cout << "map is " << mapp[name] << endl;
+                table[name] = right;
+                cout << "map is " << table[name] << endl;
                 return new Number(right);
         }
         if(leftarg->getLexem() == NUMBER){
                 left = ((Number *)leftarg)->getValue();
         }
         else{
-                left = mapp[((Variable *)leftarg)->getName()];
+                left =table[((Variable *)leftarg)->getName()];
         }
         if(rightarg->getLexem() == NUMBER){
                 right = ((Number *)rightarg)->getValue();
         }
         else{
-                right = mapp[((Variable *)rightarg)->getName()];
+                right = table[((Variable *)rightarg)->getName()];
         }
 	switch(getType()){
 		case PLUS:
@@ -276,8 +286,10 @@ Number *checkNumber(string codeline, int *i){
 
 Variable *checkLetter(string codeline, int *i){
 	string name;
-	if(codeline[*i] >= 'a' && codeline[*i] <= 'z'){
-		while((codeline[*i] >= 'a' && codeline[*i] <= 'z') || isdigit(codeline[*i])){
+	if((codeline[*i] >= 'a' && codeline[*i] <= 'z') || 
+	   (codeline[*i] >= 'A' && codeline[*i] <= 'Z')){
+		while((codeline[*i] >= 'a' && codeline[*i] <= 'z') || isdigit(codeline[*i])
+			|| (codeline[*i] >= 'A' && codeline[*i] <= 'Z')){
 			string newLetter = {codeline[*i]};
                         name.append(newLetter);
                         (*i)++;
@@ -446,19 +458,41 @@ void printVec(vector<Lexem *> postfix){
 	}
 }
 
+void initLabels(vector<Lexem *> &infix, int &row){
+        cout << "row : " << row << endl;
+        auto elem = infix.begin();
+        for(int i = 1; i < infix.size(); i++){
+                if((int)infix[i - 1]->getLexem() == VARIABLE &&
+                   (int)infix[i]->getLexem() == OPER){
+                        if(((Oper *)infix[i])->getType() == COLON){
+                                LabelTable[((Variable *)infix[i - 1])->getName()] = row;
+                                cout << "we find : " << endl;
+                                elem += i - 1;
+                                infix.erase(elem);
+                                infix.erase(elem);
+                                i++;
+                        }
+                }
+        }
+        return;
+}
+
 int main(){
 	string codeline;
-	vector<Lexem *> infix;
-	vector<Lexem *> postfix;
-	int value;
+	vector<vector<Lexem *>> infixLines, postfixLines;
 	while(getline(cin, codeline)){
-		infix = parseLexem(codeline);
-		cout << "size of infix " << infix.size() << endl;
-		postfix = buildPoliz(infix);
-		printVec(postfix);
-		value = evaluatePoliz(postfix);
-		infix.clear();
-		cout << "value = " << value << endl ;
-	}
+		infixLines.push_back(parseLexem(codeline));
+        }
+	int row;
+	        for(row = 0; row < infixLines.size(); row++){
+                initLabels(infixLines[row], row);
+                printVec(infixLines[row]);
+        }
+        for(row = 0; row < infixLines.size(); row++){
+                postfixLines.push_back(buildPoliz(infixLines[row]));
+                printVec(postfixLines[row]);
+        }
+	row = 0;
+	//evaluate
 	return 0;
 }
