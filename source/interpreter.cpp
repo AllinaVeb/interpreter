@@ -56,8 +56,8 @@ int PRIORITY [] = {
 	-2, -2,
 	-2, -2,
 	-2, -2,
-	-1, -1, -1,
-	0, 0,
+	-2, 0, -2,
+	-1, -1,
 	1,
 	2,
 	3,
@@ -106,8 +106,7 @@ public:
 		return table[name];
 	}
         void setValue(int newValue){
-        //      value = newValue;
-        //      work in map??
+        	table[name] = newValue;
         }
 };
 
@@ -127,21 +126,33 @@ public:
 	Lexem *getValue(Lexem *, Lexem *);
 };
 
+class Goto: public Oper {
+	int row;
+public:
+	Goto(OPERATOR opertype): Oper(opertype){
+		row = -1;
+	}
+	void setRow(int newrow){
+		row = newrow;
+	}
+	int getRow(){
+		return row;
+	}
+};
+
 Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 	int left, right;
 	if(getType() == ASSIGN){
                 right = ((Number *)rightarg)->getValue();
-                string name = ((Variable *)leftarg)->getName();
-                cout << "name is " << name << endl;
-                table[name] = right;
-                cout << "map is " << table[name] << endl;
-                return new Number(right);
+		((Variable *)leftarg)->setValue(right);
+               string name = ((Variable *)leftarg)->getName();
+		return new Number(right);
         }
         if(leftarg->getLexem() == NUMBER){
                 left = ((Number *)leftarg)->getValue();
         }
         else{
-                left =table[((Variable *)leftarg)->getName()];
+                left = table[((Variable *)leftarg)->getName()];
         }
         if(rightarg->getLexem() == NUMBER){
                 right = ((Number *)rightarg)->getValue();
@@ -248,26 +259,20 @@ Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 
 Oper *checkOper(string codeline, int *i){
 	int size = sizeof(OPERTEXT)/sizeof(OPERTEXT[0]);
-	int position = -1;
-	string subline;
 	for(int j = 0; j < size; j++){
 		string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
 		if(OPERTEXT[j] == subcodeline){
-			position = j;
-			subline = subcodeline;
+			cout  << "[" <<  subcodeline << "] ";
+			for(int k = 1; k < OPERTEXT[j].size(); k++){ 
+                                (*i)++;
+                        }
+			if(OPERTEXT[j] == "GOTO" || OPERTEXT[j] == "IF" || OPERTEXT[j] == "ELSE" ||
+			   OPERTEXT[j] == "WHILE" || OPERTEXT[j] == "ENDWHILE"){
+				return new Goto((OPERATOR)j);
+			}
+			return new Oper((OPERATOR)j);
 		}
 	}
-	if(position >= 0){
-			cout << "oper is " << subline << endl;
-			if(subline.size() == 2){
-                                (*i)++;
-                        }
-                        if(subline.size() == 3){
-                                (*i)++;
-                                (*i)++;
-                        }
-			return new Oper((OPERATOR)position);
-		}
 	return nullptr;
 }
 
@@ -278,7 +283,8 @@ Number *checkNumber(string codeline, int *i){
 			number = number * 10 + (codeline[*i] - '0');
                         (*i)++;
                 }
-		cout << "number is " << number << endl;
+		cout << "[" << number << "] ";
+		(*i)--;
                 return new Number(number);
         }
         return nullptr;
@@ -294,7 +300,8 @@ Variable *checkLetter(string codeline, int *i){
                         name.append(newLetter);
                         (*i)++;
 		}
-		cout << "variable is " << name << endl;
+		cout << "[" << name << "] ";
+		(*i)--;
 		return new Variable(name);
 	}
 	return nullptr;
@@ -302,25 +309,22 @@ Variable *checkLetter(string codeline, int *i){
 
 vector<Lexem *>  parseLexem(string codeline){
 	vector<Lexem *> infix;
+	Lexem* ptr;
 	for(int i = 0; i < codeline.size(); i++){
-		Number *ptrN = checkNumber(codeline, &i);
-		if(ptrN){
-			infix.push_back(ptrN);
-			i--;
+		if(ptr = checkNumber(codeline, &i)){
+			infix.push_back(ptr);
 			continue;
 		}
-		Oper *ptrO = checkOper(codeline, &i);
-                if(ptrO){
-                        infix.push_back(ptrO);
+                if(ptr = checkOper(codeline, &i)){
+                        infix.push_back(ptr);
 			continue;
                 }
-		Variable *ptrV = checkLetter(codeline, &i);
-                if(ptrV){
-                        infix.push_back(ptrV);
-			i--;
+                if(ptr = checkLetter(codeline, &i)){
+                        infix.push_back(ptr);
                         continue;
                 }
 	}
+	cout << endl;
 	return infix;
 }
 
@@ -395,22 +399,19 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 			}
 		}
 	}
-	cout << "size of stack " << stack.size() << endl;
 	int sizestack = stack.size();
 	for(int i = 0; i < sizestack; i++){
 		Oper *x = stack.top();
-		cout << "stack[" << i << "] is oper "
-                             << OPERTEXT[(int)(x->getType())] << endl;
 		if(!(x->getType() == LBRACKET)){
 			postfix.push_back(x);
 		}
 		stack.pop();
 	}
-	cout << "size of postfix " << postfix.size() << endl;
+	cout << '\n' <<  endl;
 	return postfix;
 }
 
-int evaluatePoliz(vector<Lexem *> poliz){
+int evaluatePoliz(vector<Lexem *> poliz, int &row){
 	stack<Lexem *> ans;
 	ans.push(new Number(0)); //for -num 
 	for(int i = 0; i < poliz.size(); i++){
@@ -419,13 +420,15 @@ int evaluatePoliz(vector<Lexem *> poliz){
 			continue;
 		}
 		if(poliz[i]->getLexem() == OPER){
-			cout << "size of ans = " << ans.size() << endl;
+			if(((Oper *)poliz[i])->getType() == GOTO){
+				//return 
+				cout << "we find goto" << endl;
+				return LabelTable[((Variable *)poliz[i - 1])->getName()];
+			}
 			Lexem *x = ans.top();
 			ans.pop();
 			Lexem *y = ans.top();
 			ans.pop();
-		//	cout << "left arg is " << y->getValue() << endl;
-		//	cout << "right arg is " << x->getValue() << endl;
 			Lexem *arg =((Oper *)poliz[i])->getValue(y, x);
 			if(ans.empty()){
 				ans.push(new Number(0));
@@ -434,28 +437,27 @@ int evaluatePoliz(vector<Lexem *> poliz){
 			continue;
 		}
 	}
-	return ((Number *)ans.top())->getValue();
+	cout << "answer is " << ((Number *)ans.top())->getValue() << endl;
+	return row + 1;
 }
 
 void printVec(vector<Lexem *> postfix){
 	for(int i = 0; i < postfix.size(); i++){
 		int k = (int)postfix[i]->getLexem();
 		if(k == 0){
-			cout << "postfix[" << i << "] is num " 
-			     << ((Number *)postfix[i])->getValue() << endl;
+			cout << "[" << ((Number *)postfix[i])->getValue() << "] ";
 			continue;
 		}
 		if(k == 1){
-			cout << "postfix[" << i << "] is oper " 
-			     << OPERTEXT[(int)(((Oper *)postfix[i])->getType())] << endl;
+			cout << "[" << OPERTEXT[(int)(((Oper *)postfix[i])->getType())] << "] ";
 			continue;
 		}
 		if(k == 2){
-			cout << "postfix[" << i << "] is var " 
-			     << (string)(((Variable *)postfix[i])->getName()) << endl;
+			cout << "[" << (string)(((Variable *)postfix[i])->getName()) << "] ";
 			continue;
 		}
 	}
+	cout << endl;
 }
 
 void initLabels(vector<Lexem *> &infix, int &row){
@@ -493,6 +495,9 @@ int main(){
                 printVec(postfixLines[row]);
         }
 	row = 0;
-	//evaluate
+	while(row >= 0 && row < postfixLines.size()){
+		row = evaluatePoliz(postfixLines[row], row);
+		cout << "row is " << row << endl;
+	}
 	return 0;
 }
