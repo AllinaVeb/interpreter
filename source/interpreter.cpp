@@ -271,8 +271,7 @@ Oper *checkOper(string codeline, int *i){
 			for(int k = 1; k < OPERTEXT[j].size(); k++){ 
                                 (*i)++;
                         }
-			if(OPERTEXT[j] == "GOTO" || OPERTEXT[j] == "IF" || OPERTEXT[j] == "ELSE" ||
-			   OPERTEXT[j] == "WHILE" || OPERTEXT[j] == "ENDWHILE"){
+			if(j == GOTO || j == IF || j == ELSE || j == WHILE || j == ENDWHILE){
 				return new Goto((OPERATOR)j);
 			}
 			return new Oper((OPERATOR)j);
@@ -301,8 +300,7 @@ Variable *checkLetter(string codeline, int *i){
 	   (codeline[*i] >= 'A' && codeline[*i] <= 'Z')){
 		while((codeline[*i] >= 'a' && codeline[*i] <= 'z') || isdigit(codeline[*i])
 			|| (codeline[*i] >= 'A' && codeline[*i] <= 'Z')){
-			string newLetter = {codeline[*i]};
-                        name.append(newLetter);
+			name +=codeline[*i];
                         (*i)++;
 		}
 		cout << "[" << name << "] ";
@@ -346,6 +344,9 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 			continue;
 		}
 		if(infix[i]->getLexem() == OPER){
+			if(((Oper *)infix[i])->getType() == THEN){
+				continue;
+			}
 			if(stack.empty()){
 				stack.push((Oper *)infix[i]);
                                 continue;
@@ -436,7 +437,10 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 	int size = ArrClear.size();
 	for(int i = 0; i < size; i++){
 		cout << " i = " << i << endl;
-		delete ArrClear[i];
+		if(ArrClear[i] != nullptr){
+			delete ArrClear[i];
+			ArrClear[i] = nullptr;
+		}
 	}
 	cout << "arrclear size " << ArrClear.size() << endl;
 	cout << "we here ?" << endl;
@@ -466,56 +470,59 @@ void initLabels(vector<Lexem *> &infix, int &row){
         cout << "row : " << row << endl;
         auto elem = infix.begin();
 	for(int i = 1; i < infix.size(); i++){
-                if((int)infix[i - 1]->getLexem() == VARIABLE &&
-                   (int)infix[i]->getLexem() == OPER){
-                        if(((Oper *)infix[i])->getType() == COLON){
-				LabelTable[((Variable *)infix[i - 1])->getName()] = row;
-                                cout << "we find : " << endl;
-                                elem += i - 1;
-                                infix.erase(elem);
-                                infix.erase(elem);
-                                i++;
-                        }
+		if(infix[i - 1] != nullptr && infix[i] != nullptr){
+                	if((int)infix[i - 1]->getLexem() == VARIABLE &&
+                   	(int)infix[i]->getLexem() == OPER){
+                        	if(((Oper *)infix[i])->getType() == COLON){
+					LabelTable[((Variable *)infix[i - 1])->getName()] = row;
+        	                        cout << "we find : " << endl;
+                	                delete infix[i - 1];
+					delete infix[i];
+					infix[i - 1] == nullptr;
+					infix[i] == nullptr;
+					//elem += i - 1;
+                       	        	//infix.erase(elem);
+                                	//infix.erase(elem);
+                                	i++;
+                        	}
+			}
                 }
         }
-        return;
 }
 
 void initJumps(vector<vector<Lexem *>> infixLines){
 	cout << "we are in init jumps " << endl;
 	stack<Goto *> stackIfElse;
-	Goto *ifif = new Goto((OPERATOR)0);
-	cout << "test get row " << ifif->getRow() << endl;
-	delete ifif;
 	for(int row = 0; row < infixLines.size(); row++){
+		cout << "rows =" << infixLines.size() << endl; 
 		for(int i = 0; i < infixLines[row].size(); i++){
 			if(infixLines[row][i]->getLexem() == OPER){
-				if(((Oper *)infixLines[row][i])->getType() == IF)
-					{
-				//		cout << "if row " << ((Goto *)ifoper)->getRow() << endl;
-						cout << " we have if on row " << row << i << endl;
-						/*stackIfElse.push((Goto *)infixLines[row][i]);
+				Oper *ifoper = (Oper *)infixLines[row][i];
+				cout << "row before switch " << row << endl;
+				switch(((Oper *)ifoper)->getType()){
+					case IF:{
+						cout << "case if row " << row << endl;
+						cout << "if row " << ((Goto *)ifoper)->getRow() << endl;
+						stackIfElse.push((Goto *)ifoper);
 						cout << "if on " << row << " row" << endl;
-						(stackIfElse.top())->setRow(row);
-						cout << ((Goto *)stackIfElse.top())->getRow() << " stacktop row" << endl;
-						
-						*/}
-				if(((Oper *)infixLines[row][i])->getType() == ELSE){
-						cout << "we have else on row " << row << i <<  endl;
-						/*
-						Goto *x = stackIfElse.top();
-						x->setRow(row + 1);
+						break;
+					}
+					case ELSE:{
+						cout << "case else row " << row << endl; 
+						((Goto *)stackIfElse.top())->setRow(row + 1);
 						cout << "if[row] = " << row + 1 << endl;
 						stackIfElse.pop();
-						stackIfElse.push((Goto *)infixLines[row][i]);
-					*/
-						}
-				/*	case ENDIF:{
+						stackIfElse.push((Goto *)ifoper);
+						break;
+					}
+					case ENDIF:{
+						cout << "case endif row " << row << endl;
 						stackIfElse.top()->setRow(row + 1);
 						cout << "else row? = " << row + 1 << endl;
 						stackIfElse.pop();
-					}*/
-			
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -544,7 +551,6 @@ int main(){
                 printVec(infixLines[row]);
         }
 	initJumps(infixLines);
-
         for(row = 0; row < infixLines.size(); row++){
                 postfixLines.push_back(buildPoliz(infixLines[row]));
                 printVec(postfixLines[row]);
