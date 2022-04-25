@@ -6,7 +6,7 @@
 
 using namespace std;
 
-map<string, int> table;
+map<string, int> VarTable;
 map<string, int> LabelTable;
 
 enum OPERATOR{
@@ -108,10 +108,10 @@ public:
                 return name;
         }
         int getValue(){
-		return table[name];
+		return VarTable[name];
 	}
         void setValue(int newValue){
-        	table[name] = newValue;
+        	VarTable[name] = newValue;
         }
 };
 
@@ -147,12 +147,14 @@ public:
 
 Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 	int left, right;
-	if(getType() == ASSIGN){
-                right = ((Number *)rightarg)->getValue();
-		((Variable *)leftarg)->setValue(right);
-               string name = ((Variable *)leftarg)->getName();
-		return new Number(right);
-        }
+	switch(getType()){
+		case ASSIGN:{
+                	right = ((Number *)rightarg)->getValue();
+			((Variable *)leftarg)->setValue(right);
+			string name = ((Variable *)leftarg)->getName();
+			return new Number(right);
+        		}
+	}
         if(leftarg->getLexem() == NUMBER){
                 left = ((Number *)leftarg)->getValue();
         }
@@ -268,9 +270,10 @@ Oper *checkOper(string codeline, int *i){
 		string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
 		if(OPERTEXT[j] == subcodeline){
 			cout  << "[" <<  subcodeline << "] ";
-			for(int k = 1; k < OPERTEXT[j].size(); k++){ 
-                                (*i)++;
-                        }
+			(*i) += OPERTEXT[j].size() - 1;
+		//	for(int k = 1; k < OPERTEXT[j].size(); k++){ 
+                  //              (*i)++;
+                    //    }
 			if(j == GOTO || j == IF || j == ELSE || j == WHILE || j == ENDWHILE){
 				return new Goto((OPERATOR)j);
 			}
@@ -403,7 +406,6 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 	Number *num = new Number(0);
 	vector<Lexem *> ArrClear;
 	ArrClear.push_back(num);
-	cout << "arrclear size 1 ? " << ArrClear.size() << endl;
 	ans.push(num); //for -num 
 	for(int i = 0; i < poliz.size(); i++){
 		if(poliz[i]->getLexem() != OPER){
@@ -411,9 +413,23 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 			continue;
 		}
 		if(poliz[i]->getLexem() == OPER){
-			if(((Oper *)poliz[i])->getType() == GOTO){ 
-				cout << "we find goto" << endl;
-				return LabelTable[((Variable *)poliz[i - 1])->getName()];
+			switch(((Oper *)poliz[i])->getType()){
+				case GOTO:{
+					cout << "we find goto" << endl;
+                                	return LabelTable[((Variable *)poliz[i - 1])->getName()];
+				}
+				case ELSE:{
+					return ((Goto *)poliz[i])->getRow();
+				}
+				case IF:{
+					if(!((Number *)ans.top())->getValue()){
+						cout << "we need jump to else?" << endl;
+						return ((Goto *)poliz[i])->getRow();
+					}
+				}
+				case ENDIF:{
+					return row + 1;
+				}
 			}
 			Lexem *x = ans.top();
 			ans.pop();
@@ -424,26 +440,26 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 				num = new Number(0);
 				ans.push(num);
 				ArrClear.push_back(num);
-				cout << "arrclear size 1?  " << ArrClear.size() << endl;
 			}
                         ans.push(arg);
 			ArrClear.push_back(arg);
-			cout << " arrclear size " << ArrClear.size() << endl;
 			continue;
 		}
 	}
 	cout << "answer is " << ((Number *)ans.top())->getValue() << endl;
-	cout << "arrclear size before " << ArrClear.size() << endl;	
 	int size = ArrClear.size();
-	for(int i = 0; i < size; i++){
+	auto elem = ArrClear.begin();
+	while(!ArrClear.empty()){
+		ArrClear.erase(elem);
+	}
+/*	for(int i = 0; i < size; i++){
 		cout << " i = " << i << endl;
 		if(ArrClear[i] != nullptr){
 			delete ArrClear[i];
 			ArrClear[i] = nullptr;
 		}
 	}
-	cout << "arrclear size " << ArrClear.size() << endl;
-	cout << "we here ?" << endl;
+	*/
 	return row + 1;
 }
 
@@ -475,14 +491,14 @@ void initLabels(vector<Lexem *> &infix, int &row){
                    	(int)infix[i]->getLexem() == OPER){
                         	if(((Oper *)infix[i])->getType() == COLON){
 					LabelTable[((Variable *)infix[i - 1])->getName()] = row;
-        	                        cout << "we find : " << endl;
-                	                delete infix[i - 1];
-					delete infix[i];
-					infix[i - 1] == nullptr;
-					infix[i] == nullptr;
-					//elem += i - 1;
-                       	        	//infix.erase(elem);
-                                	//infix.erase(elem);
+        	                        cout << "we find goto on row  " << row << endl;
+                	               // delete infix[i - 1];
+					//delete infix[i];
+					//infix[i - 1] == nullptr;
+					//infix[i] == nullptr;
+					elem += i - 1;
+                       	        	infix.erase(elem);
+                                	infix.erase(elem);
                                 	i++;
                         	}
 			}
@@ -494,15 +510,12 @@ void initJumps(vector<vector<Lexem *>> infixLines){
 	cout << "we are in init jumps " << endl;
 	stack<Goto *> stackIfElse;
 	for(int row = 0; row < infixLines.size(); row++){
-		cout << "rows =" << infixLines.size() << endl; 
 		for(int i = 0; i < infixLines[row].size(); i++){
 			if(infixLines[row][i]->getLexem() == OPER){
 				Oper *ifoper = (Oper *)infixLines[row][i];
-				cout << "row before switch " << row << endl;
 				switch(((Oper *)ifoper)->getType()){
 					case IF:{
 						cout << "case if row " << row << endl;
-						cout << "if row " << ((Goto *)ifoper)->getRow() << endl;
 						stackIfElse.push((Goto *)ifoper);
 						cout << "if on " << row << " row" << endl;
 						break;
@@ -529,14 +542,18 @@ void initJumps(vector<vector<Lexem *>> infixLines){
 }
 
 void infixClear(vector<Lexem *> &infix){
-	cout << " we are in infix clear " << endl;
-	cout << "infix size is " << infix.size() << endl;
 	int size = infix.size();
-	for(int i = 0; i < size; i++){
+	auto elem = infix.begin();
+/*	for(int i = 0; i < size; i++){
 		delete infix[i];		
 		// AddressSanitizer: new-delete-type-mismatch
 		// deleted one and stoped		
 	}
+	*/
+	while(!infix.empty()){
+		infix.erase(elem);
+	}
+
 }
 
 int main(){
@@ -546,6 +563,7 @@ int main(){
 		infixLines.push_back(parseLexem(codeline));
         }
 	int row;
+	cout << "looking for goto" << endl;
         for(row = 0; row < infixLines.size(); row++){
                 initLabels(infixLines[row], row);
                 printVec(infixLines[row]);
@@ -564,6 +582,5 @@ int main(){
 		infixClear(infixLines[i]);
 	}
 	cout << "we in end main ?" << endl;
-	infixLines.clear();
 	return 0;
 }
