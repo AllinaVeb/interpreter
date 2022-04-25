@@ -413,23 +413,20 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 			continue;
 		}
 		if(poliz[i]->getLexem() == OPER){
-			switch(((Oper *)poliz[i])->getType()){
-				case GOTO:{
-					cout << "we find goto" << endl;
-                                	return LabelTable[((Variable *)poliz[i - 1])->getName()];
-				}
-				case ELSE:{
-					return ((Goto *)poliz[i])->getRow();
-				}
-				case IF:{
-					if(!((Number *)ans.top())->getValue()){
-						cout << "we need jump to else?" << endl;
-						return ((Goto *)poliz[i])->getRow();
-					}
-				}
-				case ENDIF:{
-					return row + 1;
-				}
+			int oper = (int)(((Oper *)poliz[i])->getType());
+			if(oper == GOTO){
+				return LabelTable[((Variable *)poliz[i - 1])->getName()];
+			}
+			if(oper == ELSE || oper == ENDWHILE){
+				return ((Goto *)poliz[i])->getRow();
+			}
+			if(oper == IF || oper == WHILE){
+				if(!((Number *)ans.top())->getValue()){
+                                                return ((Goto *)poliz[i])->getRow();
+                                }
+			}
+			if(oper == ENDIF){
+				return row + 1;
 			}
 			Lexem *x = ans.top();
 			ans.pop();
@@ -509,23 +506,24 @@ void initLabels(vector<Lexem *> &infix, int &row){
 void initJumps(vector<vector<Lexem *>> infixLines){
 	cout << "we are in init jumps " << endl;
 	stack<Goto *> stackIfElse;
+	stack<Goto *> stackWhile;
 	for(int row = 0; row < infixLines.size(); row++){
 		for(int i = 0; i < infixLines[row].size(); i++){
 			if(infixLines[row][i]->getLexem() == OPER){
-				Oper *ifoper = (Oper *)infixLines[row][i];
-				switch(((Oper *)ifoper)->getType()){
+				Oper *operGoto = (Oper *)infixLines[row][i];
+				switch(((Oper *)operGoto)->getType()){
 					case IF:{
 						cout << "case if row " << row << endl;
-						stackIfElse.push((Goto *)ifoper);
+						stackIfElse.push((Goto *)operGoto);
 						cout << "if on " << row << " row" << endl;
 						break;
 					}
 					case ELSE:{
 						cout << "case else row " << row << endl; 
-						((Goto *)stackIfElse.top())->setRow(row + 1);
+						stackIfElse.top()->setRow(row + 1);
 						cout << "if[row] = " << row + 1 << endl;
 						stackIfElse.pop();
-						stackIfElse.push((Goto *)ifoper);
+						stackIfElse.push((Goto *)operGoto);
 						break;
 					}
 					case ENDIF:{
@@ -533,6 +531,20 @@ void initJumps(vector<vector<Lexem *>> infixLines){
 						stackIfElse.top()->setRow(row + 1);
 						cout << "else row? = " << row + 1 << endl;
 						stackIfElse.pop();
+						break;
+					}
+					case WHILE:{
+						cout << "case while row " << row << endl;
+						((Goto *)operGoto)->setRow(row);
+						stackWhile.push((Goto *)operGoto);
+						break;
+					}
+					case ENDWHILE:{
+						cout << "case endwhile row " << row << endl;
+						int whilerow = stackWhile.top()->getRow();
+						((Goto *)operGoto)->setRow(whilerow);
+						stackWhile.top()->setRow(row + 1);
+						stackWhile.pop();
 						break;
 					}
 				}
