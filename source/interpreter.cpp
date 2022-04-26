@@ -73,36 +73,41 @@ int PRIORITY [] = {
 
 class Lexem {
 public:
-	LEXEM_TYPE lexem_type;
+	LEXEM_TYPE lexemType;
 	Lexem(){
 		cout << "NEW LEXEM" << endl;
 	}
 	~Lexem(){
 		cout << "DELETE LEXEM" << endl;
 	}
-	LEXEM_TYPE getLexem(){
-		return lexem_type;
+	LEXEM_TYPE getLexemType(){
+		return lexemType;
 	}		
 };
 
-class Number: public Lexem {
+class Item: public Lexem {
+public:
+	virtual int getValue() = 0;
+};
+
+class Number: public Item {
 	int value;
 public:
 	Number(int newValue){
 		value = newValue;
-		lexem_type = NUMBER;
+		lexemType = NUMBER;
 	}
 	int getValue(){
 		return value;
 	}
 };
 
-class Variable: public Lexem {
+class Variable: public Item {
         string name;
 public:
         Variable(const string &newName){
                 name = newName;
-                lexem_type = VARIABLE;
+                lexemType = VARIABLE;
         }
         string getName(){
                 return name;
@@ -120,7 +125,7 @@ class Oper: public Lexem {
 public:
 	Oper(OPERATOR opertype){
 		Oper::opertype = opertype;
-		lexem_type = OPER;
+		lexemType = OPER;
 	} 
 	OPERATOR getType(){
 		return opertype;
@@ -149,24 +154,13 @@ Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 	int left, right;
 	switch(getType()){
 		case ASSIGN:{
-                	right = ((Number *)rightarg)->getValue();
+                	right = ((Item *)rightarg)->getValue();
 			((Variable *)leftarg)->setValue(right);
-			string name = ((Variable *)leftarg)->getName();
 			return new Number(right);
         		}
 	}
-        if(leftarg->getLexem() == NUMBER){
-                left = ((Number *)leftarg)->getValue();
-        }
-        else{
-                left = ((Variable *)leftarg)->getValue();
-        }
-        if(rightarg->getLexem() == NUMBER){
-                right = ((Number *)rightarg)->getValue();
-        }
-        else{
-                right = ((Variable *)rightarg)->getValue();
-        }
+        left = ((Item *)leftarg)->getValue();
+        right = ((Item *)rightarg)->getValue();
 	switch(getType()){
 		case PLUS:
 			{
@@ -271,9 +265,6 @@ Oper *checkOper(string codeline, int *i){
 		if(OPERTEXT[j] == subcodeline){
 			cout  << "[" <<  subcodeline << "] ";
 			(*i) += OPERTEXT[j].size() - 1;
-		//	for(int k = 1; k < OPERTEXT[j].size(); k++){ 
-                  //              (*i)++;
-                    //    }
 			if(j == GOTO || j == IF || j == ELSE || j == WHILE || j == ENDWHILE){
 				return new Goto((OPERATOR)j);
 			}
@@ -297,12 +288,18 @@ Number *checkNumber(string codeline, int *i){
         return nullptr;
 }
 
+bool isletter(char codeletter){
+	if((codeletter >= 'a' && codeletter <= 'z') || 
+		(codeletter >= 'A' && codeletter <= 'Z')){
+		return true;
+	}
+	return false;
+}
+
 Variable *checkLetter(string codeline, int *i){
 	string name;
-	if((codeline[*i] >= 'a' && codeline[*i] <= 'z') || 
-	   (codeline[*i] >= 'A' && codeline[*i] <= 'Z')){
-		while((codeline[*i] >= 'a' && codeline[*i] <= 'z') || isdigit(codeline[*i])
-			|| (codeline[*i] >= 'A' && codeline[*i] <= 'Z')){
+	if(isletter(codeline[*i])){
+		while(isletter(codeline[*i]) || isdigit(codeline[*i])){
 			name +=codeline[*i];
                         (*i)++;
 		}
@@ -338,15 +335,15 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 	vector<Lexem *> postfix;
 	stack<Oper *> stack;
 	for(int i = 0; i < infix.size(); i++){
-		if(infix[i]->getLexem() == NUMBER){
+		if(infix[i]->getLexemType() == NUMBER){
 			postfix.push_back(infix[i]);
 			continue;
 		}
-		if(infix[i]->getLexem() == VARIABLE){
+		if(infix[i]->getLexemType() == VARIABLE){
 			postfix.push_back(infix[i]);
 			continue;
 		}
-		if(infix[i]->getLexem() == OPER){
+		if(infix[i]->getLexemType() == OPER){
 			if(((Oper *)infix[i])->getType() == THEN){
 				continue;
 			}
@@ -408,11 +405,11 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 	ArrClear.push_back(num);
 	ans.push(num); //for -num 
 	for(int i = 0; i < poliz.size(); i++){
-		if(poliz[i]->getLexem() != OPER){
+		if(poliz[i]->getLexemType() != OPER){
 			ans.push(poliz[i]);
 			continue;
 		}
-		if(poliz[i]->getLexem() == OPER){
+		if(poliz[i]->getLexemType() == OPER){
 			int oper = (int)(((Oper *)poliz[i])->getType());
 			if(oper == GOTO){
 				return LabelTable[((Variable *)poliz[i - 1])->getName()];
@@ -462,7 +459,7 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 
 void printVec(vector<Lexem *> postfix){
 	for(int i = 0; i < postfix.size(); i++){
-		int k = (int)postfix[i]->getLexem();
+		int k = (int)postfix[i]->getLexemType();
 		if(k == 0){
 			cout << "[" << ((Number *)postfix[i])->getValue() << "] ";
 			continue;
@@ -484,8 +481,8 @@ void initLabels(vector<Lexem *> &infix, int &row){
         auto elem = infix.begin();
 	for(int i = 1; i < infix.size(); i++){
 		if(infix[i - 1] != nullptr && infix[i] != nullptr){
-                	if((int)infix[i - 1]->getLexem() == VARIABLE &&
-                   	(int)infix[i]->getLexem() == OPER){
+                	if((int)infix[i - 1]->getLexemType() == VARIABLE &&
+                   	(int)infix[i]->getLexemType() == OPER){
                         	if(((Oper *)infix[i])->getType() == COLON){
 					LabelTable[((Variable *)infix[i - 1])->getName()] = row;
         	                        cout << "we find goto on row  " << row << endl;
@@ -509,7 +506,7 @@ void initJumps(vector<vector<Lexem *>> infixLines){
 	stack<Goto *> stackWhile;
 	for(int row = 0; row < infixLines.size(); row++){
 		for(int i = 0; i < infixLines[row].size(); i++){
-			if(infixLines[row][i]->getLexem() == OPER){
+			if(infixLines[row][i]->getLexemType() == OPER){
 				Oper *operGoto = (Oper *)infixLines[row][i];
 				switch(((Oper *)operGoto)->getType()){
 					case IF:{
