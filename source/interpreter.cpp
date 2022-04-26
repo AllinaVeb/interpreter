@@ -90,6 +90,24 @@ public:
 	virtual int getValue() = 0;
 };
 
+class Literal: public Item{
+public:
+	virtual string getName() = 0;
+	virtual void setValue(int) = 0;
+};
+
+class ArrayElem: public Literal {
+	string name;
+	int index;
+public:
+	string getName(){
+		return name;
+	}
+	int getValue();
+	void setValue(int newValue);
+};
+
+
 class Number: public Item {
 	int value;
 public:
@@ -102,7 +120,7 @@ public:
 	}
 };
 
-class Variable: public Item {
+class Variable: public Literal {
         string name;
 public:
         Variable(const string &newName){
@@ -155,7 +173,7 @@ Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 	switch(getType()){
 		case ASSIGN:{
                 	right = ((Item *)rightarg)->getValue();
-			((Variable *)leftarg)->setValue(right);
+			((Literal *)leftarg)->setValue(right);
 			return new Number(right);
         		}
 	}
