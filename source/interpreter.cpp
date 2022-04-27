@@ -8,13 +8,16 @@ using namespace std;
 
 map<string, int> VarTable;
 map<string, int> LabelTable;
+map<string, vector<int>> ArrayTable;
 
 enum OPERATOR{
 	IF, THEN,
 	ELSE, ENDIF,
 	WHILE, ENDWHILE,
 	GOTO, ASSIGN, COLON,
+	ARRAY,
 	LBRACKET, RBRACKET,
+	LQBRACKET, RQBRACKET,
 	OR,
 	AND,
 	BITOR,
@@ -38,7 +41,9 @@ string OPERTEXT[] = {
 	"else", "endif",
 	"while", "endwhile",
 	"goto", "=", ":",
+	"array",
 	"(", ")",
+	"[", "]",
 	"or",
 	"and",
 	"|",
@@ -57,6 +62,8 @@ int PRIORITY [] = {
 	-2, -2,
 	-2, -2,
 	-2, 0, -2,
+	-2,
+	-1, -1,
 	-1, -1,
 	1,
 	2,
@@ -100,13 +107,20 @@ class ArrayElem: public Literal {
 	string name;
 	int index;
 public:
+	ArrayElem(string newName, int newIndex){
+		name = newName;
+		index = newIndex;
+	}
 	string getName(){
 		return name;
 	}
-	int getValue();
-	void setValue(int newValue);
+	int getValue(){
+		return ArrayTable[name][index];
+	}
+	void setValue(int newValue){
+		ArrayTable[name][index] = newValue;
+	}
 };
-
 
 class Number: public Item {
 	int value;
@@ -171,11 +185,16 @@ public:
 Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
 	int left, right;
 	switch(getType()){
+		case RQBRACKET:{
+			string name = ((Literal *)leftarg)->getName();
+			int index = ((Item *)rightarg)->getValue();
+			return new ArrayElem(name, index);
+		}
 		case ASSIGN:{
                 	right = ((Item *)rightarg)->getValue();
 			((Literal *)leftarg)->setValue(right);
 			return new Number(right);
-        		}
+        	}
 	}
         left = ((Item *)leftarg)->getValue();
         right = ((Item *)rightarg)->getValue();
@@ -362,44 +381,52 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
 			continue;
 		}
 		if(infix[i]->getLexemType() == OPER){
-			if(((Oper *)infix[i])->getType() == THEN){
+			Oper *oper = (Oper *)infix[i];
+			int opertype = oper->getType();
+			if(opertype == THEN){
 				continue;
 			}
 			if(stack.empty()){
-				stack.push((Oper *)infix[i]);
+				stack.push(oper);
                                 continue;
                         }
 			Oper *x = stack.top();
-			if(((Oper *)infix[i])->getType() == LBRACKET){
-                                        stack.push((Oper *)infix[i]);
-                                        continue;
+			int xtype = x->getType();
+			if(opertype == LBRACKET || opertype == LQBRACKET){
+                                        stack.push(oper);
+					continue;
 			}
-			if(((Oper *)infix[i])->getType() == RBRACKET){
-                                        while(x->getType() != LBRACKET){
-                                                postfix.push_back(x);
-                                                stack.pop();
-                                                x = stack.top();
-                                        }
-                                        stack.pop(); //pop (
-                                        continue;
+			if(opertype == RBRACKET || opertype == RQBRACKET){
+				while(xtype != LBRACKET && xtype != LQBRACKET ){
+					postfix.push_back(x);
+					stack.pop();
+					x = stack.top();
+					xtype = x->getType();
+				}
+				if(opertype == RQBRACKET){
+					postfix.push_back(oper);
+				}
+				stack.pop(); //pop ( or [
+				continue;
                         }
-			if(x->getPriority() < ((Oper *)infix[i])->getPriority()){
-				stack.push((Oper *)infix[i]);
+			if(x->getPriority() < oper->getPriority()){
+				stack.push(oper);
 				continue;
 			}
-			if(x->getPriority() == ((Oper *)infix[i])->getPriority()){
+			if(x->getPriority() == oper->getPriority()){
 				postfix.push_back(x);
 				stack.pop();
-				stack.push((Oper *)infix[i]);
+				stack.push(oper);
 				continue;
 			}
-			if(x->getPriority() > ((Oper *)infix[i])->getPriority()){ 	
-				while(!(stack.empty())){
-					x = stack.top();
+			if(x->getPriority() > oper->getPriority()){
+				while(xtype != LBRACKET && xtype != LQBRACKET && !stack.empty()){
                 	                postfix.push_back(x);
 	       	                        stack.pop();
+					x = stack.top();
+					xtype = x->getType();
 				}
-                                stack.push((Oper *)infix[i]);		
+                                stack.push(oper);
 				continue;
 			}
 		}
@@ -447,6 +474,12 @@ int evaluatePoliz(vector<Lexem *> poliz, int &row){
 			ans.pop();
 			Lexem *y = ans.top();
 			ans.pop();
+			if(oper == ARRAY){
+				string name = ((Literal *)y)->getName();
+				int arrsize = ((Item *)x)->getValue();
+				ArrayTable[name] = vector<int>(arrsize);
+				return row + 1;
+			}
 			Lexem *arg =((Oper *)poliz[i])->getValue(y, x);
 			if(ans.empty()){
 				num = new Number(0);
