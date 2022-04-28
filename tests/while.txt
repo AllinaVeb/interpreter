@@ -1,0 +1,6 @@
+ x = 0
+ while x < 11 then
+x * x 
+x = x + 1
+ endwhile
+x - 3

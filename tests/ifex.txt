@@ -1,0 +1,13 @@
+ x = 4
+ if x < 11 then
+ x = x + 1
+ 10+x
+ endif
+ x-0
+if x == 6 then
+x - 3
+else
+x = x * 2 + 3
+endif
+x + 5
+

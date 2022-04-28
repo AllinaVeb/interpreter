@@ -1,0 +1,10 @@
+a array 8
+x = 1
+b array 11
+while x < 6 then
+a[x] = x+5
+x = x + 1
+b[x + 1] = 9 - x
+endwhile
+a[2] = b [ 3]
+a[5] - 0
