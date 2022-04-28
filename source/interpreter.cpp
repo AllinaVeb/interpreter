@@ -4,260 +4,212 @@
 #include <stack>
 #include <map>
 
+#include <interpreter.h>
+
 using namespace std;
 
 map<string, int> VarTable;
 map<string, int> LabelTable;
 map<string, vector<int>> ArrayTable;
 
-enum OPERATOR{
-	IF, THEN,
-	ELSE, ENDIF,
-	WHILE, ENDWHILE,
-	GOTO, ASSIGN, COLON,
-	ARRAY,
-	LBRACKET, RBRACKET,
-	LQBRACKET, RQBRACKET,
-	OR,
-	AND,
-	BITOR,
-	XOR,
-	BITAND,
-	EQ, NEQ,
-	SHL,SHR,
-	LEQ, LT,
-	GEQ, GT,
-	PLUS, MINUS,
-	MULT, DIV, MOD
-};
-
-enum LEXEM_TYPE{
-	NUMBER, OPER,
-	VARIABLE
-};
-
 string OPERTEXT[] = {
-	"if", "then",
-	"else", "endif",
-	"while", "endwhile",
-	"goto", "=", ":",
-	"array",
-	"(", ")",
-	"[", "]",
-	"or",
-	"and",
-	"|",
-	"^",
-	"&",
-	"==", "!=",
-	"<<", ">>",
-	"<=", "<",
-	">=", ">",
-	"+", "-",
-	"*", "/", "%"
+        "if", "then",
+        "else", "endif",
+        "while", "endwhile",
+        "goto", "=", ":",
+        "array",
+        "(", ")",
+        "[", "]",
+        "or",
+        "and",
+        "|",
+        "^",
+        "&",
+        "==", "!=",
+        "<<", ">>",
+        "<=", "<",
+        ">=", ">",
+        "+", "-",
+        "*", "/", "%"
 };
 
 int PRIORITY [] = {
-	-2, -2,
-	-2, -2,
-	-2, -2,
-	-2, 0, -2,
-	-2,
-	-1, -1,
-	-1, -1,
-	1,
-	2,
-	3,
-	4,
-	5,
-	6, 6,
-	8, 8,
-	7, 7,
-	7, 7, 
-	9, 9,
-	10, 10, 10
+        -2, -2,
+        -2, -2,
+        -2, -2,
+        -2, 0, -2,
+        -2,
+        -1, -1,
+        -1, -1,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6, 6,
+        8, 8,
+        7, 7,
+        7, 7,
+        9, 9,
+        10, 10, 10
 };
 
-class Lexem {
-public:
-	LEXEM_TYPE lexemType;
-	Lexem(){}
-	virtual ~Lexem(){}
-	LEXEM_TYPE getLexemType(){
-		return lexemType;
-	}		
-};
+Lexem::Lexem(){};
 
-class Item: public Lexem {
-public:
-	virtual int getValue() = 0;
-};
+Lexem::~Lexem(){};
 
-class Literal: public Item{
-public:
-	virtual string getName() = 0;
-	virtual void setValue(int) = 0;
-};
+LEXEM_TYPE Lexem::getLexemType(){
+                return lexemType;
+        }
 
-class ArrayElem: public Literal {
-	string name;
-	int index;
-public:
-	ArrayElem(string newName, int newIndex){
-		name = newName;
-		index = newIndex;
-	}
-	string getName(){
-		return name;
-	}
-	int getValue(){
-		return ArrayTable[name][index];
-	}
-	void setValue(int newValue){
-		ArrayTable[name][index] = newValue;
-	}
-};
+ArrayElem::ArrayElem(string newName, int newIndex){
+                name = newName;
+                index = newIndex;
+        }
 
-class Number: public Item {
-	int value;
-public:
-	Number(int newValue){
-		value = newValue;
-		lexemType = NUMBER;
-	}
-	int getValue(){
-		return value;
-	}
-};
+string ArrayElem::getName(){
+                return name;
+        }
 
-class Variable: public Literal {
-        string name;
-public:
-        Variable(const string &newName){
+int ArrayElem::getValue(){
+                return ArrayTable[name][index];
+        }
+
+void ArrayElem::setValue(int newValue){
+                ArrayTable[name][index] = newValue;
+        }
+
+Number::Number(int newValue){
+                value = newValue;
+                lexemType = NUMBER;
+        }
+
+int Number::getValue(){
+                return value;
+        }
+
+Variable::Variable(const string &newName){
                 name = newName;
                 lexemType = VARIABLE;
         }
-        string getName(){
+
+string Variable::getName(){
                 return name;
         }
-        int getValue(){
-		return VarTable[name];
-	}
-        void setValue(int newValue){
-        	VarTable[name] = newValue;
+
+int Variable::getValue(){
+                return VarTable[name];
         }
-};
 
-class Oper: public Lexem {
-	OPERATOR opertype;
-public:
-	Oper(OPERATOR opertype){
-		Oper::opertype = opertype;
-		lexemType = OPER;
-	} 
-	OPERATOR getType(){
-		return opertype;
-	}
-	int getPriority(){
-		return PRIORITY[getType()];
-	}
-	Lexem *getValue(Lexem *, Lexem *);
-};
+void Variable::setValue(int newValue){
+                VarTable[name] = newValue;
+        }
 
-class Goto: public Oper {
-	int row;
-public:
-	Goto(OPERATOR opertype): Oper(opertype){
-		row = -1;
-	}
-	void setRow(int newrow){
-		row = newrow;
-	}
-	int getRow(){
-		return row;
-	}
-};
+Oper::Oper(OPERATOR opertype){
+                Oper::opertype = opertype;
+                lexemType = OPER;
+        }
+
+OPERATOR Oper::getType(){
+                return opertype;
+        }
+
+int Oper::getPriority(){
+                return PRIORITY[getType()];
+        }
+
+Goto::Goto(OPERATOR opertype): Oper(opertype){
+                row = -1;
+        }
+
+void Goto::setRow(int newrow){
+                row = newrow;
+        }
+
+int Goto::getRow(){
+                return row;
+        }
 
 Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
-	int left, right;
-	switch(getType()){
-		case RQBRACKET:{
-			string name = ((Literal *)leftarg)->getName();
-			int index = ((Item *)rightarg)->getValue();
-			return new ArrayElem(name, index);
-		}
-		case ASSIGN:{
-                	right = ((Item *)rightarg)->getValue();
-			((Literal *)leftarg)->setValue(right);
-			return new Number(right);
-        	}
-	}
+        int left, right;
+        switch(getType()){
+                case RQBRACKET:{
+                        string name = ((Literal *)leftarg)->getName();
+                        int index = ((Item *)rightarg)->getValue();
+                        return new ArrayElem(name, index);
+                }
+                case ASSIGN:{
+                        right = ((Item *)rightarg)->getValue();
+                        ((Literal *)leftarg)->setValue(right);
+                        return new Number(right);
+                }
+        }
         left = ((Item *)leftarg)->getValue();
         right = ((Item *)rightarg)->getValue();
-	switch(getType()){
-		case PLUS:
-			{
-				right = left + right;
-				break;
-			}
-		case MINUS:
-			{
-				right = left - right;
-				break;
-			}
-		case MULT:
-			{
-				right = left * right;
-				break;
-			}
-		case OR:
-			{
-				right = left or right;
-				break;
-			}
-		case AND:
-			{
-				right = left and right;
-				break;
-			}
-		case BITOR:
-			{
-				right = left bitor right;
-				break;
-			}
-		case XOR:
-			{
-				right = left xor right;
-				break;
-			}
-		case BITAND:
-			{
-				right = left bitand right;
-				break;
-			}
-		case EQ:
-			{
-				right = (left == right);
-				break;
-			}
-		case NEQ:
-			{
-				right = (left != right);
-				break;
-			}
-		case LEQ:
-			{
-				right = left <= right;
-				break;
-			}
-		case LT:
-			{
-				right = left < right;
-				break;
-			}
-		case GEQ:
-			{
-				right = left >= right;
+        switch(getType()){
+                case PLUS:
+                        {
+                                right = left + right;
+                                break;
+                        }
+                case MINUS:
+                        {
+                                right = left - right;
+                                break;
+                        }
+                case MULT:
+                        {
+                                right = left * right;
+                                break;
+                        }
+                case OR:
+                        {
+                                right = left or right;
+                                break;
+                        }
+                case AND:
+                        {
+                                right = left and right;
+                                break;
+                        }
+                case BITOR:
+                        {
+                                right = left bitor right;
+                                break;
+                        }
+                case XOR:
+                        {
+                                right = left xor right;
+                                break;
+                        }
+                case BITAND:
+                        {
+                                right = left bitand right;
+                                break;
+                        }
+                case EQ:
+                        {
+                                right = (left == right);
+                                break;
+                        }
+                case NEQ:
+                        {
+                                right = (left != right);
+                                break;
+                        }
+                case LEQ:
+                        {
+                                right = left <= right;
+                                break;
+                        }
+                case LT:
+                        {
+                                right = left < right;
+                                break;
+                        }
+                case GEQ:
+                        {
+                                right = left >= right;
                                 break;
                         }
                 case GT:
@@ -287,161 +239,161 @@ Lexem * Oper::getValue(Lexem *leftarg, Lexem *rightarg){
                                 right = left % right;
                                 break;
                         }
-	}
-	return new Number(right);
+        }
+        return new Number(right);
 }
 
 Oper *checkOper(string codeline, int *i){
-	int size = sizeof(OPERTEXT)/sizeof(OPERTEXT[0]);
-	for(int j = 0; j < size; j++){
-		string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
-		if(OPERTEXT[j] == subcodeline){
-			cout  << "[" <<  subcodeline << "] ";
-			(*i) += OPERTEXT[j].size() - 1;
-			if(j == GOTO || j == IF || j == ELSE || j == WHILE || j == ENDWHILE){
-				return new Goto((OPERATOR)j);
-			}
-			return new Oper((OPERATOR)j);
-		}
-	}
-	return nullptr;
+        int size = sizeof(OPERTEXT)/sizeof(OPERTEXT[0]);
+        for(int j = 0; j < size; j++){
+                string subcodeline = codeline.substr(*i, OPERTEXT[j].size());
+                if(OPERTEXT[j] == subcodeline){
+                        cout  << "[" <<  subcodeline << "] ";
+                        (*i) += OPERTEXT[j].size() - 1;
+                        if(j == GOTO || j == IF || j == ELSE || j == WHILE || j == ENDWHILE){
+                                return new Goto((OPERATOR)j);
+                        }
+                        return new Oper((OPERATOR)j);
+                }
+        }
+        return nullptr;
 }
 
 Number *checkNumber(string codeline, int *i){
-	int number = 0;
+        int number = 0;
         if(isdigit(codeline[*i])){
-		while(isdigit(codeline[*i])){
-			number = number * 10 + (codeline[*i] - '0');
+                while(isdigit(codeline[*i])){
+                        number = number * 10 + (codeline[*i] - '0');
                         (*i)++;
                 }
-		cout << "[" << number << "] ";
-		(*i)--;
+                cout << "[" << number << "] ";
+                (*i)--;
                 return new Number(number);
         }
         return nullptr;
 }
 
 bool isletter(char codeletter){
-	if((codeletter >= 'a' && codeletter <= 'z') || 
-		(codeletter >= 'A' && codeletter <= 'Z')){
-		return true;
-	}
-	return false;
+        if((codeletter >= 'a' && codeletter <= 'z') ||
+                (codeletter >= 'A' && codeletter <= 'Z')){
+                return true;
+        }
+        return false;
 }
 
 Variable *checkLetter(string codeline, int *i){
-	string name;
-	if(isletter(codeline[*i])){
-		while(isletter(codeline[*i]) || isdigit(codeline[*i])){
-			name +=codeline[*i];
+        string name;
+        if(isletter(codeline[*i])){
+                while(isletter(codeline[*i]) || isdigit(codeline[*i])){
+                        name +=codeline[*i];
                         (*i)++;
-		}
-		cout << "[" << name << "] ";
-		(*i)--;
-		return new Variable(name);
-	}
-	return nullptr;
+                }
+                cout << "[" << name << "] ";
+                (*i)--;
+                return new Variable(name);
+        }
+        return nullptr;
 }
 
 vector<Lexem *>  parseLexem(string codeline){
-	vector<Lexem *> infix;
-	Lexem* ptr;
-	for(int i = 0; i < codeline.size(); i++){
-		if(ptr = checkNumber(codeline, &i)){
-			infix.push_back(ptr);
-			continue;
-		}
+        vector<Lexem *> infix;
+        Lexem* ptr;
+        for(int i = 0; i < codeline.size(); i++){
+                if(ptr = checkNumber(codeline, &i)){
+                        infix.push_back(ptr);
+                        continue;
+                }
                 if(ptr = checkOper(codeline, &i)){
                         infix.push_back(ptr);
-			continue;
+                        continue;
                 }
                 if(ptr = checkLetter(codeline, &i)){
                         infix.push_back(ptr);
                         continue;
                 }
-	}
-	cout << endl;
-	return infix;
+        }
+        cout << endl;
+        return infix;
 }
 
 vector<Lexem *> buildPoliz(vector<Lexem *> infix){
-	vector<Lexem *> postfix;
-	stack<Oper *> stack;
-	for(int i = 0; i < infix.size(); i++){
-		if(infix[i]->getLexemType() == NUMBER){
-			postfix.push_back(infix[i]);
-			continue;
-		}
-		if(infix[i]->getLexemType() == VARIABLE){
-			postfix.push_back(infix[i]);
-			continue;
-		}
-		if(infix[i]->getLexemType() == OPER){
-			Oper *oper = (Oper *)infix[i];
-			int opertype = oper->getType();
-			if(opertype == THEN){
-				continue;
-			}
-			if(stack.empty()){
-				stack.push(oper);
+        vector<Lexem *> postfix;
+        stack<Oper *> stack;
+        for(int i = 0; i < infix.size(); i++){
+                if(infix[i]->getLexemType() == NUMBER){
+                        postfix.push_back(infix[i]);
+                        continue;
+                }
+                if(infix[i]->getLexemType() == VARIABLE){
+                        postfix.push_back(infix[i]);
+                        continue;
+                }
+                if(infix[i]->getLexemType() == OPER){
+                        Oper *oper = (Oper *)infix[i];
+                        int opertype = oper->getType();
+                        if(opertype == THEN){
                                 continue;
                         }
-			Oper *x = stack.top();
-			int xtype = x->getType();
-			if(opertype == LBRACKET || opertype == LQBRACKET){
-                                        stack.push(oper);
-					continue;
-			}
-			if(opertype == RBRACKET || opertype == RQBRACKET){
-				while(xtype != LBRACKET && xtype != LQBRACKET ){
-					postfix.push_back(x);
-					stack.pop();
-					x = stack.top();
-					xtype = x->getType();
-				}
-				if(opertype == RQBRACKET){
-					postfix.push_back(oper);
-				}
-				stack.pop(); //pop ( or [
-				continue;
-                        }
-			if(x->getPriority() < oper->getPriority()){
-				stack.push(oper);
-				continue;
-			}
-			if(x->getPriority() == oper->getPriority()){
-				postfix.push_back(x);
-				stack.pop();
-				stack.push(oper);
-				continue;
-			}
-			if(x->getPriority() > oper->getPriority()){
-				while(xtype != LBRACKET && xtype != LQBRACKET && !stack.empty()){
-                	                x = stack.top();
-                                        xtype = x->getType();
-					postfix.push_back(x);
-	       	                        stack.pop();
-				}
+                        if(stack.empty()){
                                 stack.push(oper);
-				continue;
-			}
-		}
-	}
-	int sizestack = stack.size();
-	for(int i = 0; i < sizestack; i++){
-		Oper *x = stack.top();
-		if(!(x->getType() == LBRACKET)){
-			postfix.push_back(x);
-		}
-		stack.pop();
-	}
-	cout << '\n' <<  endl;
-	return postfix;
+                                continue;
+                        }
+                        Oper *x = stack.top();
+                        int xtype = x->getType();
+                        if(opertype == LBRACKET || opertype == LQBRACKET){
+                                        stack.push(oper);
+                                        continue;
+                        }
+                        if(opertype == RBRACKET || opertype == RQBRACKET){
+                                while(xtype != LBRACKET && xtype != LQBRACKET ){
+                                        postfix.push_back(x);
+                                        stack.pop();
+                                        x = stack.top();
+                                        xtype = x->getType();
+                                }
+                                if(opertype == RQBRACKET){
+                                        postfix.push_back(oper);
+                                }
+                                stack.pop(); //pop ( or [
+                                continue;
+                        }
+                        if(x->getPriority() < oper->getPriority()){
+                                stack.push(oper);
+                                continue;
+                        }
+                        if(x->getPriority() == oper->getPriority()){
+                                postfix.push_back(x);
+                                stack.pop();
+                                stack.push(oper);
+                                continue;
+                        }
+                        if(x->getPriority() > oper->getPriority()){
+				while(xtype != LBRACKET && xtype != LQBRACKET && !stack.empty()){
+                                        x = stack.top();
+                                        xtype = x->getType();
+                                        postfix.push_back(x);
+                                        stack.pop();
+                                }
+                                stack.push(oper);
+                                continue;
+                        }
+                }
+        }
+        int sizestack = stack.size();
+        for(int i = 0; i < sizestack; i++){
+                Oper *x = stack.top();
+                if(!(x->getType() == LBRACKET)){
+                        postfix.push_back(x);
+                }
+                stack.pop();
+        }
+        cout << '\n' <<  endl;
+        return postfix;
 }
 
-void cleaner(vector<Lexem *> &ArrClear){        
-	int size = ArrClear.size();
-	for(int i = 0; i < size; i++){
+void cleaner(vector<Lexem *> &ArrClear){
+        int size = ArrClear.size();
+        for(int i = 0; i < size; i++){
                 if(ArrClear[i] != nullptr){
                         delete ArrClear[i];
                         ArrClear[i] = nullptr;
@@ -450,176 +402,141 @@ void cleaner(vector<Lexem *> &ArrClear){
 }
 
 int evaluatePoliz(vector<Lexem *> poliz, int &row){
-	stack<Lexem *> ans;
-	Number *num = new Number(0);
-	vector<Lexem *> ArrClear;
-	ArrClear.push_back(num);
-	ans.push(num); //for -num 
-	for(int i = 0; i < poliz.size(); i++){
-		if(poliz[i]->getLexemType() != OPER){
-			ans.push(poliz[i]);
-			continue;
-		}
-		if(poliz[i]->getLexemType() == OPER){
-			int oper = (int)(((Oper *)poliz[i])->getType());
-			if(oper == GOTO){
-				cleaner(ArrClear);
-				return LabelTable[((Variable *)poliz[i - 1])->getName()];
-			}
-			if(oper == ELSE || oper == ENDWHILE){
-				cleaner(ArrClear);
-				return ((Goto *)poliz[i])->getRow();
-			}
-			if(oper == IF || oper == WHILE){
-				if(!((Number *)ans.top())->getValue()){
-                                        cleaner(ArrClear);        
-					return ((Goto *)poliz[i])->getRow();
+        stack<Lexem *> ans;
+        Number *num = new Number(0);
+        vector<Lexem *> ArrClear;
+        ArrClear.push_back(num);
+        ans.push(num); //for -num
+        for(int i = 0; i < poliz.size(); i++){
+                if(poliz[i]->getLexemType() != OPER){
+                        ans.push(poliz[i]);
+                        continue;
+                }
+                if(poliz[i]->getLexemType() == OPER){
+                        int oper = (int)(((Oper *)poliz[i])->getType());
+                        if(oper == GOTO){
+                                cleaner(ArrClear);
+                                return LabelTable[((Variable *)poliz[i - 1])->getName()];
+                        }
+                        if(oper == ELSE || oper == ENDWHILE){
+                                cleaner(ArrClear);
+                                return ((Goto *)poliz[i])->getRow();
+                        }
+                        if(oper == IF || oper == WHILE){
+                                if(!((Number *)ans.top())->getValue()){
+                                        cleaner(ArrClear);
+                                        return ((Goto *)poliz[i])->getRow();
                                 }
-			}
-			if(oper == ENDIF){
-				cleaner(ArrClear);
-				return row + 1;
-			}
-			Lexem *x = ans.top();
-			ans.pop();
-			Lexem *y = ans.top();
-			ans.pop();
-			if(oper == ARRAY){
-				string name = ((Literal *)y)->getName();
-				int arrsize = ((Item *)x)->getValue();
-				ArrayTable[name] = vector<int>(arrsize);
-				cleaner(ArrClear);
-				return row + 1;
-			}
-			Lexem *arg =((Oper *)poliz[i])->getValue(y, x);
-			if(ans.empty()){
-				num = new Number(0);
-				ans.push(num);
-				ArrClear.push_back(num);
-			}
+                        }
+                        if(oper == ENDIF){
+                                cleaner(ArrClear);
+                                return row + 1;
+                        }
+                        Lexem *x = ans.top();
+                        ans.pop();
+                        Lexem *y = ans.top();
+                        ans.pop();
+                        if(oper == ARRAY){
+                                string name = ((Literal *)y)->getName();
+                                int arrsize = ((Item *)x)->getValue();
+                                ArrayTable[name] = vector<int>(arrsize);
+                                cleaner(ArrClear);
+                                return row + 1;
+                        }
+                        Lexem *arg =((Oper *)poliz[i])->getValue(y, x);
+                        if(ans.empty()){
+                                num = new Number(0);
+                                ans.push(num);
+                                ArrClear.push_back(num);
+                        }
                         ans.push(arg);
-			ArrClear.push_back(arg);
-			continue;
-		}
-	}
-	cout << "answer is " << ((Number *)ans.top())->getValue() << endl;
-	cleaner(ArrClear);
-	return row + 1;
+                        ArrClear.push_back(arg);
+                        continue;
+                }
+        }
+        cout << "answer is " << ((Number *)ans.top())->getValue() << endl;
+        cleaner(ArrClear);
+        return row + 1;
 }
 
 void printVec(vector<Lexem *> line){
-	for(int i = 0; i < line.size(); i++){
-		int k = (int)line[i]->getLexemType();
-		if(k == 0){
-			cout << "[" << ((Number *)line[i])->getValue() << "] ";
-			continue;
-		}
-		if(k == 1){
-			cout << "[" << OPERTEXT[(int)(((Oper *)line[i])->getType())] << "] ";
-			continue;
-		}
-		if(k == 2){
-			cout << "[" << (((Variable *)line[i])->getName()) << "] ";
-			continue;
-		}
-	}
-	cout << endl;
+        for(int i = 0; i < line.size(); i++){
+                int k = (int)line[i]->getLexemType();
+                if(k == 0){
+                        cout << "[" << ((Number *)line[i])->getValue() << "] ";
+                        continue;
+                }
+                if(k == 1){
+                        cout << "[" << OPERTEXT[(int)(((Oper *)line[i])->getType())] << "] ";
+                        continue;
+                }
+                if(k == 2){
+                        cout << "[" << (((Variable *)line[i])->getName()) << "] ";
+                        continue;
+                }
+        }
+        cout << endl;
 }
 
 void initLabels(vector<Lexem *> &infix, int &row){
-	auto elem = infix.begin();
-	for(int i = 1; i < infix.size(); i++){
-		if(infix[i - 1] != nullptr && infix[i] != nullptr){
-			if((int)infix[i - 1]->getLexemType() == VARIABLE &&
-                   	(int)infix[i]->getLexemType() == OPER){
-                        	if(((Oper *)infix[i])->getType() == COLON){
-					LabelTable[((Literal *)infix[i - 1])->getName()] = row;
-                	                delete infix[i - 1];
-					delete infix[i];
-					elem += i - 1;
-					infix.erase(elem);
-					infix.erase(elem);
-                                	i++;
-                        	}
-			}
+        auto elem = infix.begin();
+        for(int i = 1; i < infix.size(); i++){
+                if(infix[i - 1] != nullptr && infix[i] != nullptr){
+                        if((int)infix[i - 1]->getLexemType() == VARIABLE &&
+                        (int)infix[i]->getLexemType() == OPER){
+                                if(((Oper *)infix[i])->getType() == COLON){
+                                        LabelTable[((Literal *)infix[i - 1])->getName()] = row;
+                                        delete infix[i - 1];
+                                        delete infix[i];
+                                        elem += i - 1;
+                                        infix.erase(elem);
+                                        infix.erase(elem);
+                                        i++;
+                                }
+                        }
                 }
         }
 }
 
 void initJumps(vector<vector<Lexem *>> infixLines){
-	cout << "we are in init jumps " << endl;
-	stack<Goto *> stackIfElse;
-	stack<Goto *> stackWhile;
-	for(int row = 0; row < infixLines.size(); row++){
-		for(int i = 0; i < infixLines[row].size(); i++){
-			if(infixLines[row][i]->getLexemType() == OPER){
-				Oper *operGoto = (Oper *)infixLines[row][i];
-				switch(((Oper *)operGoto)->getType()){
-					case IF:{
-						stackIfElse.push((Goto *)operGoto);
-						break;
-					}
-					case ELSE:{
-						stackIfElse.top()->setRow(row + 1);
-						stackIfElse.pop();
-						stackIfElse.push((Goto *)operGoto);
-						break;
-					}
-					case ENDIF:{
-						stackIfElse.top()->setRow(row + 1);
-						stackIfElse.pop();
-						break;
-					}
-					case WHILE:{
-						((Goto *)operGoto)->setRow(row);
-						stackWhile.push((Goto *)operGoto);
-						break;
-					}
-					case ENDWHILE:{
-						int whilerow = stackWhile.top()->getRow();
-						((Goto *)operGoto)->setRow(whilerow);
-						stackWhile.top()->setRow(row + 1);
-						stackWhile.pop();
-						break;
-					}
-				}
-			}
-		}
-	}
+        cout << "we are in init jumps " << endl;
+        stack<Goto *> stackIfElse;
+        stack<Goto *> stackWhile;
+        for(int row = 0; row < infixLines.size(); row++){
+                for(int i = 0; i < infixLines[row].size(); i++){
+                        if(infixLines[row][i]->getLexemType() == OPER){
+                                Oper *operGoto = (Oper *)infixLines[row][i];
+                                switch(((Oper *)operGoto)->getType()){
+                                        case IF:{
+                                                stackIfElse.push((Goto *)operGoto);
+                                                break;
+                                        }
+                                        case ELSE:{
+                                                stackIfElse.top()->setRow(row + 1);
+                                                stackIfElse.pop();
+                                                stackIfElse.push((Goto *)operGoto);
+                                                break;
+                                        }
+                                        case ENDIF:{
+                                                stackIfElse.top()->setRow(row + 1);
+                                                stackIfElse.pop();
+                                                break;
+                                        }
+                                        case WHILE:{
+                                                ((Goto *)operGoto)->setRow(row);
+                                                stackWhile.push((Goto *)operGoto);
+                                                break;
+                                        }
+                                        case ENDWHILE:{
+                                                int whilerow = stackWhile.top()->getRow();
+                                                ((Goto *)operGoto)->setRow(whilerow);
+                                                stackWhile.top()->setRow(row + 1);
+                                                stackWhile.pop();
+                                                break;
+                                        }
+                                }
+                        }
+                }
+        }
 }
 
-void infixClear(vector<Lexem *> &infix){
-	int size = infix.size();
-	for(int i = 0; i < size; i++){
-		if(infix[i] != nullptr){
-			delete infix[i];
-		}
-	}
-}
-
-int main(){
-	string codeline;
-	vector<vector<Lexem *>> infixLines, postfixLines;
-	while(getline(cin, codeline)){
-		infixLines.push_back(parseLexem(codeline));
-        }
-	int row;
-	cout << "looking for goto" << endl;
-	for(row = 0; row < infixLines.size(); row++){
-		initLabels(infixLines[row], row);
-		printVec(infixLines[row]);
-        }
-	initJumps(infixLines);
-        for(row = 0; row < infixLines.size(); row++){
-                postfixLines.push_back(buildPoliz(infixLines[row]));
-                printVec(postfixLines[row]);
-        }
-	row = 0;
-	while(row >= 0 && row < postfixLines.size()){
-		row = evaluatePoliz(postfixLines[row], row);
-	}
-	for(int i = 0; i < infixLines.size(); i++){
-		infixClear(infixLines[i]);
-	}
-	return 0;
-}
