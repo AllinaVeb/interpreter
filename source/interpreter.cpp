@@ -16,7 +16,7 @@ string OPERTEXT[] = {
         "if", "then",
         "else", "endif",
         "while", "endwhile",
-        "goto", "=", ":",
+        "goto", ":",
         "array",
         "(", ")",
         "[", "]",
@@ -26,6 +26,7 @@ string OPERTEXT[] = {
         "^",
         "&",
         "==", "!=",
+	"=",
         "<<", ">>",
         "<=", "<",
         ">=", ">",
@@ -37,7 +38,7 @@ int PRIORITY [] = {
         -2, -2,
         -2, -2,
         -2, -2,
-        -2, 0, -2,
+        -2, -2,
         -2,
         -1, -1,
         -1, -1,
@@ -47,6 +48,7 @@ int PRIORITY [] = {
         4,
         5,
         6, 6,
+	0,
         8, 8,
         7, 7,
         7, 7,
@@ -368,11 +370,13 @@ vector<Lexem *> buildPoliz(vector<Lexem *> infix){
                                 continue;
                         }
                         if(x->getPriority() > oper->getPriority()){
-				while(xtype != LBRACKET && xtype != LQBRACKET && !stack.empty()){
-                                        x = stack.top();
-                                        xtype = x->getType();
+				while((x->getPriority() > oper->getPriority()) && xtype != LBRACKET && xtype != LQBRACKET && !stack.empty()){
                                         postfix.push_back(x);
                                         stack.pop();
+					if(!stack.empty()){
+						x = stack.top();
+                                        	xtype = x->getType();
+					}
                                 }
                                 stack.push(oper);
                                 continue;
